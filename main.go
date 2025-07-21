@@ -11,8 +11,8 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
-	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/crypto/bcrypt"
+	_ "modernc.org/sqlite"
 )
 
 var (
@@ -78,7 +78,7 @@ func main() {
 
 func initDB() {
 	var err error
-	db, err = sql.Open("sqlite3", "./app.db")
+	db, err = sql.Open("sqlite", "./app.db")
 	if err != nil {
 		log.Fatal(err)
 	}

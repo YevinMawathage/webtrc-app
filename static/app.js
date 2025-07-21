@@ -84,21 +84,23 @@ class WebRTCChat {
                 this.closeMobileSidebar();
             }
         });
+
+        // Password visibility toggle
+        const passwordToggle = document.querySelector('button[title="Show password"]');
+        if (passwordToggle) {
+            passwordToggle.addEventListener('click', () => this.togglePasswordVisibility());
+        }
     }
 
     switchTab(tab) {
         if (tab === 'login') {
-            this.loginTab.classList.add('bg-blue-600');
-            this.loginTab.classList.remove('bg-gray-600');
-            this.registerTab.classList.add('bg-gray-600');
-            this.registerTab.classList.remove('bg-blue-600');
-            this.authSubmit.textContent = 'Login';
+            this.loginTab.classList.add('active');
+            this.registerTab.classList.remove('active');
+            this.authSubmit.querySelector('#submit-text').textContent = 'Sign In';
         } else {
-            this.registerTab.classList.add('bg-blue-600');
-            this.registerTab.classList.remove('bg-gray-600');
-            this.loginTab.classList.add('bg-gray-600');
-            this.loginTab.classList.remove('bg-blue-600');
-            this.authSubmit.textContent = 'Register';
+            this.registerTab.classList.add('active');
+            this.loginTab.classList.remove('active');
+            this.authSubmit.querySelector('#submit-text').textContent = 'Sign Up';
         }
     }
 
@@ -106,12 +108,16 @@ class WebRTCChat {
         e.preventDefault();
         const username = this.usernameInput.value.trim();
         const password = this.passwordInput.value;
-        const isLogin = this.authSubmit.textContent === 'Login';
+        const isLogin = this.authSubmit.querySelector('#submit-text').textContent === 'Sign In';
         
         if (!username || !password) {
             this.showAuthMessage('Please fill in all fields', 'error');
             return;
         }
+
+        // Add loading state
+        this.authSubmit.classList.add('loading');
+        this.authSubmit.disabled = true;
 
         try {
             const response = await fetch(isLogin ? '/login' : '/register', {
@@ -136,15 +142,53 @@ class WebRTCChat {
             }
         } catch (error) {
             this.showAuthMessage('Network error. Please try again.', 'error');
+        } finally {
+            // Remove loading state
+            this.authSubmit.classList.remove('loading');
+            this.authSubmit.disabled = false;
         }
     }
 
     showAuthMessage(message, type) {
         this.authMessage.textContent = message;
-        this.authMessage.className = `mt-4 text-center ${type === 'error' ? 'text-red-400' : 'text-green-400'}`;
+        this.authMessage.className = `mt-6 text-center font-medium transition-all duration-300 ${type === 'error' ? 'text-red-400' : 'text-green-400'}`;
+        
+        // Add fade in animation
+        this.authMessage.style.opacity = '0';
+        this.authMessage.style.transform = 'translateY(10px)';
+        setTimeout(() => {
+            this.authMessage.style.opacity = '1';
+            this.authMessage.style.transform = 'translateY(0)';
+        }, 100);
+        
         setTimeout(() => {
             this.authMessage.textContent = '';
         }, 3000);
+    }
+
+    togglePasswordVisibility() {
+        const passwordInput = this.passwordInput;
+        const toggleButton = passwordInput.parentElement.querySelector('button[aria-label*="password"]');
+        const toggleIcon = toggleButton.querySelector('svg');
+        
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            // Change to "hide" icon
+            toggleIcon.innerHTML = `
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21"></path>
+            `;
+            toggleButton.title = 'Hide password';
+            toggleButton.setAttribute('aria-label', 'Hide password');
+        } else {
+            passwordInput.type = 'password';
+            // Change to "show" icon
+            toggleIcon.innerHTML = `
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+            `;
+            toggleButton.title = 'Show password';
+            toggleButton.setAttribute('aria-label', 'Show password');
+        }
     }
 
     async initializeChat() {
