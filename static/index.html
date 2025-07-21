@@ -771,6 +771,212 @@
             }
         }
         
+        /* Interactive 3D Animations */
+        .interactive-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+        
+        /* Floating Bubbles */
+        .floating-bubble {
+            position: absolute;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02));
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            animation: floatBubble 8s infinite ease-in-out;
+            transform-style: preserve-3d;
+        }
+        
+        .floating-bubble::before {
+            content: '';
+            position: absolute;
+            top: 20%;
+            left: 20%;
+            width: 30%;
+            height: 30%;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.3), transparent);
+            filter: blur(2px);
+        }
+        
+        @keyframes floatBubble {
+            0%, 100% {
+                transform: translateY(0px) translateX(0px) rotateZ(0deg) scale(1);
+                opacity: 0.1;
+            }
+            25% {
+                transform: translateY(-20px) translateX(10px) rotateZ(90deg) scale(1.1);
+                opacity: 0.3;
+            }
+            50% {
+                transform: translateY(-10px) translateX(-15px) rotateZ(180deg) scale(0.9);
+                opacity: 0.2;
+            }
+            75% {
+                transform: translateY(-30px) translateX(5px) rotateZ(270deg) scale(1.05);
+                opacity: 0.25;
+            }
+        }
+        
+        /* Particle System */
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.6);
+            animation: particleFloat 6s infinite ease-in-out;
+            transform-style: preserve-3d;
+        }
+        
+        @keyframes particleFloat {
+            0%, 100% {
+                transform: translateY(0px) translateX(0px) translateZ(0px) scale(1);
+                opacity: 0.6;
+            }
+            25% {
+                transform: translateY(-30px) translateX(20px) translateZ(10px) scale(1.2);
+                opacity: 1;
+            }
+            50% {
+                transform: translateY(-15px) translateX(-25px) translateZ(-5px) scale(0.8);
+                opacity: 0.4;
+            }
+            75% {
+                transform: translateY(-45px) translateX(10px) translateZ(15px) scale(1.1);
+                opacity: 0.8;
+            }
+        }
+        
+        /* Geometric Shapes */
+        .geometric-shape {
+            position: absolute;
+            opacity: 0.08;
+            animation: geometricFloat 12s infinite ease-in-out;
+            transform-style: preserve-3d;
+        }
+        
+        .geometric-triangle {
+            width: 0;
+            height: 0;
+            border-left: 25px solid transparent;
+            border-right: 25px solid transparent;
+            border-bottom: 43px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .geometric-square {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(45deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .geometric-diamond {
+            width: 30px;
+            height: 30px;
+            background: linear-gradient(45deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transform: rotate(45deg);
+        }
+        
+        @keyframes geometricFloat {
+            0%, 100% {
+                transform: translateY(0px) rotate(0deg) scale(1);
+            }
+            25% {
+                transform: translateY(-25px) rotate(90deg) scale(1.1);
+            }
+            50% {
+                transform: translateY(-12px) rotate(180deg) scale(0.9);
+            }
+            75% {
+                transform: translateY(-35px) rotate(270deg) scale(1.05);
+            }
+        }
+        
+        /* Wave Animation */
+        .wave-animation {
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            animation: waveExpand 4s infinite ease-out;
+        }
+        
+        @keyframes waveExpand {
+            0% {
+                transform: scale(0.5);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(3);
+                opacity: 0;
+            }
+        }
+        
+        /* Spiral Animation */
+        .spiral-element {
+            position: absolute;
+            width: 3px;
+            height: 3px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.5);
+            animation: spiralMotion 10s infinite linear;
+        }
+        
+        @keyframes spiralMotion {
+            0% {
+                transform: rotate(0deg) translateX(50px) scale(0.5);
+                opacity: 0;
+            }
+            25% {
+                opacity: 1;
+                transform: rotate(90deg) translateX(100px) scale(1);
+            }
+            50% {
+                transform: rotate(180deg) translateX(150px) scale(1.2);
+            }
+            75% {
+                transform: rotate(270deg) translateX(200px) scale(1);
+            }
+            100% {
+                transform: rotate(360deg) translateX(250px) scale(0.5);
+                opacity: 0;
+            }
+        }
+        
+        /* Interactive Cursor Effect */
+        .cursor-glow {
+            position: fixed;
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 1;
+            transition: transform 0.1s ease-out;
+        }
+        
+        /* 3D Depth Layers */
+        .depth-layer {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            transform-style: preserve-3d;
+        }
+        
+        .depth-layer-1 { transform: translateZ(-100px); }
+        .depth-layer-2 { transform: translateZ(-200px); }
+        .depth-layer-3 { transform: translateZ(-300px); }
+        
         /* Modern login/register form styles */
         .auth-container {
             -webkit-backdrop-filter: blur(20px) saturate(180%);
@@ -1115,6 +1321,47 @@
     <!-- Animated background -->
     <div class="animated-background"></div>
     <div class="background-overlay"></div>
+    
+    <!-- Interactive 3D Background -->
+    <div class="interactive-background">
+        <!-- Cursor Glow Effect -->
+        <div id="cursor-glow" class="cursor-glow"></div>
+        
+        <!-- Depth Layers -->
+        <div class="depth-layer depth-layer-1">
+            <!-- Floating Bubbles -->
+            <div class="floating-bubble" style="top: 20%; left: 10%; width: 60px; height: 60px; animation-delay: 0s;"></div>
+            <div class="floating-bubble" style="top: 70%; left: 80%; width: 40px; height: 40px; animation-delay: -2s;"></div>
+            <div class="floating-bubble" style="top: 40%; left: 70%; width: 80px; height: 80px; animation-delay: -4s;"></div>
+            <div class="floating-bubble" style="top: 80%; left: 20%; width: 50px; height: 50px; animation-delay: -6s;"></div>
+        </div>
+        
+        <div class="depth-layer depth-layer-2">
+            <!-- Geometric Shapes -->
+            <div class="geometric-shape geometric-triangle" style="top: 15%; left: 85%; animation-delay: -1s;"></div>
+            <div class="geometric-shape geometric-square" style="top: 60%; left: 15%; animation-delay: -3s;"></div>
+            <div class="geometric-shape geometric-diamond" style="top: 30%; left: 60%; animation-delay: -5s;"></div>
+            <div class="geometric-shape geometric-triangle" style="top: 85%; left: 75%; animation-delay: -7s;"></div>
+            
+            <!-- Wave Animations -->
+            <div class="wave-animation" style="top: 25%; left: 25%; animation-delay: 0s;"></div>
+            <div class="wave-animation" style="top: 65%; left: 65%; animation-delay: -2s;"></div>
+        </div>
+        
+        <div class="depth-layer depth-layer-3">
+            <!-- Spiral Elements -->
+            <div class="spiral-element" style="top: 50%; left: 50%; animation-delay: 0s;"></div>
+            <div class="spiral-element" style="top: 30%; left: 30%; animation-delay: -2s;"></div>
+            <div class="spiral-element" style="top: 70%; left: 70%; animation-delay: -4s;"></div>
+            
+            <!-- Particles -->
+            <div class="particle" style="top: 20%; left: 40%; animation-delay: -1s;"></div>
+            <div class="particle" style="top: 50%; left: 80%; animation-delay: -3s;"></div>
+            <div class="particle" style="top: 80%; left: 60%; animation-delay: -5s;"></div>
+            <div class="particle" style="top: 35%; left: 15%; animation-delay: -7s;"></div>
+            <div class="particle" style="top: 65%; left: 25%; animation-delay: -9s;"></div>
+        </div>
+    </div>
     <div id="app" class="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
         <!-- Login/Register Form -->
         <div id="auth-section" class="min-h-screen flex items-center justify-center fade-in px-4 sm:px-6 lg:px-8">
@@ -1367,6 +1614,257 @@
     </div>
 
     <script src="app.js?v=4"></script>
+    
+    <!-- 3D Interactive Background Script -->
+    <script>
+        // Interactive 3D Background System
+        document.addEventListener('DOMContentLoaded', function() {
+            let mouseX = 0;
+            let mouseY = 0;
+            let animationId;
+            
+            // Cursor glow effect
+            const cursorGlow = document.getElementById('cursor-glow');
+            
+            // Mouse tracking
+            document.addEventListener('mousemove', function(e) {
+                mouseX = e.clientX;
+                mouseY = e.clientY;
+                
+                // Update cursor glow position
+                if (cursorGlow) {
+                    cursorGlow.style.left = (mouseX - 150) + 'px';
+                    cursorGlow.style.top = (mouseY - 150) + 'px';
+                }
+                
+                // Update parallax layers
+                updateParallaxLayers(mouseX, mouseY);
+            });
+            
+            // Parallax effect for depth layers
+            function updateParallaxLayers(mouseX, mouseY) {
+                const centerX = window.innerWidth / 2;
+                const centerY = window.innerHeight / 2;
+                const moveX = (mouseX - centerX) / centerX;
+                const moveY = (mouseY - centerY) / centerY;
+                
+                // Apply different movements to different depth layers
+                const layer1 = document.querySelector('.depth-layer-1');
+                const layer2 = document.querySelector('.depth-layer-2');
+                const layer3 = document.querySelector('.depth-layer-3');
+                
+                if (layer1) {
+                    layer1.style.transform = `translateZ(-100px) translateX(${moveX * 20}px) translateY(${moveY * 20}px)`;
+                }
+                if (layer2) {
+                    layer2.style.transform = `translateZ(-200px) translateX(${moveX * 40}px) translateY(${moveY * 40}px)`;
+                }
+                if (layer3) {
+                    layer3.style.transform = `translateZ(-300px) translateX(${moveX * 60}px) translateY(${moveY * 60}px)`;
+                }
+                
+                // Update individual elements
+                updateBubbles(moveX, moveY);
+                updateGeometricShapes(moveX, moveY);
+                updateParticles(moveX, moveY);
+            }
+            
+            // Dynamic bubble movement
+            function updateBubbles(moveX, moveY) {
+                const bubbles = document.querySelectorAll('.floating-bubble');
+                bubbles.forEach((bubble, index) => {
+                    const factor = (index + 1) * 0.3;
+                    const currentTransform = bubble.style.transform || '';
+                    bubble.style.transform = currentTransform + ` translate(${moveX * factor * 10}px, ${moveY * factor * 10}px)`;
+                });
+            }
+            
+            // Dynamic geometric shapes movement
+            function updateGeometricShapes(moveX, moveY) {
+                const shapes = document.querySelectorAll('.geometric-shape');
+                shapes.forEach((shape, index) => {
+                    const factor = (index + 1) * 0.2;
+                    const rotation = moveX * 30 + moveY * 20;
+                    shape.style.transform += ` translate(${moveX * factor * 8}px, ${moveY * factor * 8}px) rotate(${rotation}deg)`;
+                });
+            }
+            
+            // Dynamic particle movement
+            function updateParticles(moveX, moveY) {
+                const particles = document.querySelectorAll('.particle');
+                particles.forEach((particle, index) => {
+                    const factor = (index + 1) * 0.1;
+                    particle.style.transform += ` translate(${moveX * factor * 15}px, ${moveY * factor * 15}px)`;
+                });
+            }
+            
+            // Create additional dynamic elements
+            function createDynamicElements() {
+                // Create random bubbles
+                setInterval(() => {
+                    if (Math.random() < 0.3) {
+                        createRandomBubble();
+                    }
+                }, 2000);
+                
+                // Create random particles
+                setInterval(() => {
+                    if (Math.random() < 0.5) {
+                        createRandomParticle();
+                    }
+                }, 1500);
+            }
+            
+            // Create random bubble
+            function createRandomBubble() {
+                const bubble = document.createElement('div');
+                bubble.className = 'floating-bubble';
+                bubble.style.position = 'absolute';
+                bubble.style.top = Math.random() * 100 + '%';
+                bubble.style.left = Math.random() * 100 + '%';
+                bubble.style.width = (20 + Math.random() * 40) + 'px';
+                bubble.style.height = bubble.style.width;
+                bubble.style.animationDelay = Math.random() * 8 + 's';
+                bubble.style.opacity = '0.05';
+                
+                const layer = document.querySelector('.depth-layer-' + (Math.floor(Math.random() * 3) + 1));
+                if (layer) {
+                    layer.appendChild(bubble);
+                    
+                    // Remove after animation cycle
+                    setTimeout(() => {
+                        if (bubble.parentNode) {
+                            bubble.parentNode.removeChild(bubble);
+                        }
+                    }, 8000);
+                }
+            }
+            
+            // Create random particle
+            function createRandomParticle() {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.position = 'absolute';
+                particle.style.top = Math.random() * 100 + '%';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 6 + 's';
+                
+                const layer = document.querySelector('.depth-layer-3');
+                if (layer) {
+                    layer.appendChild(particle);
+                    
+                    // Remove after animation cycle
+                    setTimeout(() => {
+                        if (particle.parentNode) {
+                            particle.parentNode.removeChild(particle);
+                        }
+                    }, 6000);
+                }
+            }
+            
+            // Click interaction - create wave effect
+            document.addEventListener('click', function(e) {
+                createWaveEffect(e.clientX, e.clientY);
+            });
+            
+            // Create wave effect on click
+            function createWaveEffect(x, y) {
+                const wave = document.createElement('div');
+                wave.className = 'wave-animation';
+                wave.style.position = 'fixed';
+                wave.style.left = (x - 100) + 'px';
+                wave.style.top = (y - 100) + 'px';
+                wave.style.zIndex = '2';
+                wave.style.pointerEvents = 'none';
+                
+                document.body.appendChild(wave);
+                
+                // Remove after animation
+                setTimeout(() => {
+                    if (wave.parentNode) {
+                        wave.parentNode.removeChild(wave);
+                    }
+                }, 4000);
+            }
+            
+            // Form interaction effects
+            const authContainer = document.querySelector('.auth-container');
+            if (authContainer) {
+                authContainer.addEventListener('mouseenter', function() {
+                    // Intensify animations when hovering over form
+                    document.querySelectorAll('.floating-bubble').forEach(bubble => {
+                        bubble.style.animationDuration = '4s';
+                    });
+                    document.querySelectorAll('.particle').forEach(particle => {
+                        particle.style.animationDuration = '3s';
+                    });
+                });
+                
+                authContainer.addEventListener('mouseleave', function() {
+                    // Return to normal speed
+                    document.querySelectorAll('.floating-bubble').forEach(bubble => {
+                        bubble.style.animationDuration = '8s';
+                    });
+                    document.querySelectorAll('.particle').forEach(particle => {
+                        particle.style.animationDuration = '6s';
+                    });
+                });
+            }
+            
+            // Input focus effects
+            const inputs = document.querySelectorAll('.auth-input');
+            inputs.forEach(input => {
+                input.addEventListener('focus', function() {
+                    // Create spiral effect around input
+                    createSpiralEffect(this);
+                });
+            });
+            
+            // Create spiral effect
+            function createSpiralEffect(element) {
+                const rect = element.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                
+                for (let i = 0; i < 8; i++) {
+                    setTimeout(() => {
+                        const spiral = document.createElement('div');
+                        spiral.className = 'spiral-element';
+                        spiral.style.position = 'fixed';
+                        spiral.style.left = centerX + 'px';
+                        spiral.style.top = centerY + 'px';
+                        spiral.style.zIndex = '1';
+                        spiral.style.animationDelay = (i * 0.2) + 's';
+                        
+                        document.body.appendChild(spiral);
+                        
+                        setTimeout(() => {
+                            if (spiral.parentNode) {
+                                spiral.parentNode.removeChild(spiral);
+                            }
+                        }, 3000);
+                    }, i * 100);
+                }
+            }
+            
+            // Initialize dynamic elements
+            createDynamicElements();
+            
+            // Performance optimization - pause animations when tab is not visible
+            document.addEventListener('visibilitychange', function() {
+                const elements = document.querySelectorAll('.floating-bubble, .particle, .geometric-shape, .spiral-element');
+                if (document.hidden) {
+                    elements.forEach(el => {
+                        el.style.animationPlayState = 'paused';
+                    });
+                } else {
+                    elements.forEach(el => {
+                        el.style.animationPlayState = 'running';
+                    });
+                }
+            });
+        });
+    </script>
     
     <!-- Preloader Script -->
     <script>
