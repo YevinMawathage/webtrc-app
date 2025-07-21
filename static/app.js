@@ -13,6 +13,7 @@ class WebRTCChat {
         
         this.initUI();
         this.setupEventListeners();
+        this.checkExistingSession(); // Check for existing session on load
     }
 
     generateClientId() {
@@ -131,6 +132,12 @@ class WebRTCChat {
             if (response.ok) {
                 if (isLogin) {
                     this.currentUser = data.user.username;
+                    this.isLoggedIn = true;
+                    
+                    // Store JWT token in localStorage
+                    localStorage.setItem('jwtToken', data.token);
+                    localStorage.setItem('username', data.user.username);
+                    
                     this.showAuthMessage('Login successful!', 'success');
                     await this.initializeChat();
                 } else {
@@ -659,9 +666,86 @@ class WebRTCChat {
         this.isLoggedIn = false;
         this.currentUser = null;
         
+        // Clear session and JWT token from localStorage
+        this.clearStoredSession();
+        
         this.usernameInput.value = '';
         this.passwordInput.value = '';
         this.authMessage.textContent = '';
+    }
+
+    async checkExistingSession() {
+        const storedToken = localStorage.getItem('jwtToken');
+        const storedUsername = localStorage.getItem('username');
+        
+        if (!storedToken || !storedUsername) {
+            // No stored session, show login form
+            return;
+        }
+
+        // Check if token is expired (client-side check)
+        if (this.isTokenExpired()) {
+            console.log('Token expired, clearing session');
+            this.clearStoredSession();
+            return;
+        }
+
+        try {
+            const response = await fetch('/verify-session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: storedToken })
+            });
+
+            const data = await response.json();
+            
+            if (response.ok && data.valid) {
+                // Token is valid, log user in automatically
+                this.currentUser = data.user.username;
+                this.isLoggedIn = true;
+                await this.initializeChat();
+            } else {
+                // Token is invalid or expired, clear localStorage
+                this.clearStoredSession();
+            }
+        } catch (error) {
+            console.error('Error verifying session:', error);
+            // On error, clear localStorage to be safe
+            this.clearStoredSession();
+        }
+    }
+
+    clearStoredSession() {
+        localStorage.removeItem('jwtToken');
+        localStorage.removeItem('username');
+    }
+
+    getAuthHeaders() {
+        const token = localStorage.getItem('jwtToken');
+        if (token) {
+            return {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            };
+        }
+        return {
+            'Content-Type': 'application/json'
+        };
+    }
+
+    // Function to check if token is expired (client-side check)
+    isTokenExpired() {
+        const token = localStorage.getItem('jwtToken');
+        if (!token) return true;
+
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            const currentTime = Math.floor(Date.now() / 1000);
+            return payload.exp < currentTime;
+        } catch (error) {
+            console.error('Error parsing token:', error);
+            return true;
+        }
     }
 }
 

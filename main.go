@@ -6,9 +6,12 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"golang.org/x/crypto/bcrypt"
@@ -16,8 +19,9 @@ import (
 )
 
 var (
-	db       *sql.DB
-	upgrader = websocket.Upgrader{
+	db        *sql.DB
+	jwtSecret = []byte(os.Getenv("JWT_SECRET")) // Change this in production!
+	upgrader  = websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
 			return true
 		},
@@ -54,6 +58,85 @@ type Channel struct {
 
 // SFU functions removed - using WebSocket audio streaming
 
+// JWT Claims structure
+type Claims struct {
+	UserID   int    `json:"user_id"`
+	Username string `json:"username"`
+	jwt.RegisteredClaims
+}
+
+// Generate JWT token
+func generateJWT(userID int, username string) (string, error) {
+	expirationTime := time.Now().Add(24 * time.Hour) // Token expires in 24 hours
+	claims := &Claims{
+		UserID:   userID,
+		Username: username,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(expirationTime),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			Issuer:    "webtrc-app",
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString(jwtSecret)
+}
+
+// Validate JWT token
+func validateJWT(tokenString string) (*Claims, error) {
+	claims := &Claims{}
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		return jwtSecret, nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	if !token.Valid {
+		return nil, fmt.Errorf("invalid token")
+	}
+
+	return claims, nil
+}
+
+// JWT Middleware
+func jwtMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" {
+			http.Error(w, "Authorization header required", http.StatusUnauthorized)
+			return
+		}
+
+		// Extract token from "Bearer <token>"
+		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+		if tokenString == authHeader {
+			http.Error(w, "Invalid authorization header format", http.StatusUnauthorized)
+			return
+		}
+
+		claims, err := validateJWT(tokenString)
+		if err != nil {
+			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			return
+		}
+
+		// Add user info to request context for use in handlers
+		r.Header.Set("X-User-ID", fmt.Sprintf("%d", claims.UserID))
+		r.Header.Set("X-Username", claims.Username)
+
+		next.ServeHTTP(w, r)
+	}
+}
+
+func loggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("Request: %s %s", r.Method, r.URL.Path)
+		next.ServeHTTP(w, r)
+	})
+}
+
 func main() {
 	initDB()
 	defer db.Close()
@@ -62,15 +145,22 @@ func main() {
 
 	r := mux.NewRouter()
 
+	// Specific routes first
 	r.HandleFunc("/", serveHome)
+	r.HandleFunc("/terms", serveTerms)
+	r.HandleFunc("/verify-session", handleVerifySession).Methods("POST")
 	r.HandleFunc("/register", handleRegister).Methods("POST")
 	r.HandleFunc("/login", handleLogin).Methods("POST")
 	r.HandleFunc("/ws", handleWebSocket)
-	// SFU endpoint removed - using WebSocket audio streaming instead
 	r.HandleFunc("/app.js", serveJS)
+
+	// Static file handler last (this should not interfere with above routes)
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static/"))))
 
 	go handleMessages()
+
+	// Add logging middleware
+	r.Use(loggingMiddleware)
 
 	fmt.Println("Server starting on :8081")
 	log.Fatal(http.ListenAndServe(":8081", r))
@@ -138,6 +228,23 @@ func serveHome(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "static/index.html")
 }
 
+func serveTerms(w http.ResponseWriter, r *http.Request) {
+	log.Printf("Serving terms page for request: %s %s", r.Method, r.URL.Path)
+
+	// Check if file exists
+	filePath := "static/terms.html"
+	if _, err := http.Dir(".").Open(filePath); err != nil {
+		log.Printf("Error: terms.html file not found at %s: %v", filePath, err)
+		http.Error(w, "Terms page not found", http.StatusNotFound)
+		return
+	}
+
+	// Set content type explicitly
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	http.ServeFile(w, r, filePath)
+	log.Println("Successfully served terms page")
+}
+
 func serveJS(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/javascript")
 	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
@@ -183,8 +290,53 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Generate JWT token
+	token, err := generateJWT(user.ID, user.Username)
+	if err != nil {
+		http.Error(w, "Error generating token", http.StatusInternalServerError)
+		return
+	}
+
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"message": "Login successful",
+		"token":   token,
+		"user": map[string]interface{}{
+			"id":       user.ID,
+			"username": user.Username,
+		},
+	})
+}
+
+func handleVerifySession(w http.ResponseWriter, r *http.Request) {
+	var requestData struct {
+		Token string `json:"token"`
+	}
+
+	err := json.NewDecoder(r.Body).Decode(&requestData)
+	if err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	// Validate JWT token
+	claims, err := validateJWT(requestData.Token)
+	if err != nil {
+		http.Error(w, "Invalid or expired token", http.StatusUnauthorized)
+		return
+	}
+
+	// Verify user still exists in database
+	var user User
+	err = db.QueryRow("SELECT id, username FROM users WHERE id = ? AND username = ?", claims.UserID, claims.Username).Scan(&user.ID, &user.Username)
+	if err != nil {
+		http.Error(w, "User not found", http.StatusUnauthorized)
+		return
+	}
+
+	// Return user data and validity status
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"valid":   true,
+		"message": "Token valid",
 		"user": map[string]interface{}{
 			"id":       user.ID,
 			"username": user.Username,
