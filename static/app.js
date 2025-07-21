@@ -629,10 +629,16 @@ class WebRTCChat {
             if (audioTrack) {
                 audioTrack.enabled = !audioTrack.enabled;
                 this.isMuted = !audioTrack.enabled;
-                this.muteBtn.textContent = this.isMuted ? '🔇' : '🎤';
-                this.muteBtn.className = this.isMuted ? 
-                    'px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700' : 
-                    'px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700';
+                
+                // Update button content while maintaining the same design
+                if (this.isMuted) {
+                    this.muteBtn.innerHTML = '<span class="mr-2">🔇</span>Unmute';
+                } else {
+                    this.muteBtn.innerHTML = '<span class="mr-2">🎤</span>Mute';
+                }
+                
+                // Keep the same CSS classes - no need to change them
+                // The design stays consistent with the original styling
             }
         }
     }
