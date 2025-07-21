@@ -11,8 +11,16 @@ class WebRTCChat {
         this.isRecording = false;
         this.audioPlayers = new Map(); // Map<username, {context, nextStartTime, bufferQueue}>
         
+        // Sound effects
+        this.sounds = {
+            mute: null,
+            unmute: null,
+            disconnect: null
+        };
+        
         this.initUI();
         this.setupEventListeners();
+        this.initSounds();
         this.checkExistingSession(); // Check for existing session on load
     }
 
@@ -48,7 +56,95 @@ class WebRTCChat {
         this.mobileOverlay = document.getElementById('mobile-overlay');
     }
 
+    initSounds() {
+        // Create simple beep sounds for better compatibility
+        this.createSimpleSounds();
+    }
+
+    createSimpleSounds() {
+        // Create audio context only when needed
+        this.audioContext = null;
+        
+        // Store sound parameters instead of pre-generated audio
+        this.soundParams = {
+            mute: { frequency: 800, duration: 0.15, type: 'descending' },
+            unmute: { frequency: 400, duration: 0.15, type: 'ascending' },
+            disconnect: { frequency: 600, duration: 0.3, type: 'declining' }
+        };
+    }
+
+    async playSound(soundName) {
+        try {
+            if (!this.audioContext) {
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+
+            // Resume audio context if suspended (due to autoplay policies)
+            if (this.audioContext.state === 'suspended') {
+                await this.audioContext.resume();
+            }
+
+            const params = this.soundParams[soundName];
+            if (!params) return;
+
+            // Create oscillator and gain nodes
+            const oscillator = this.audioContext.createOscillator();
+            const gainNode = this.audioContext.createGain();
+            
+            // Connect nodes
+            oscillator.connect(gainNode);
+            gainNode.connect(this.audioContext.destination);
+            
+            // Set initial frequency
+            oscillator.frequency.setValueAtTime(params.frequency, this.audioContext.currentTime);
+            
+            // Configure frequency changes based on sound type
+            const now = this.audioContext.currentTime;
+            const endTime = now + params.duration;
+            
+            if (params.type === 'descending') {
+                oscillator.frequency.exponentialRampToValueAtTime(params.frequency * 0.5, endTime);
+            } else if (params.type === 'ascending') {
+                oscillator.frequency.exponentialRampToValueAtTime(params.frequency * 2, endTime);
+            } else if (params.type === 'declining') {
+                oscillator.frequency.exponentialRampToValueAtTime(params.frequency * 0.3, endTime);
+            }
+            
+            // Set envelope
+            gainNode.gain.setValueAtTime(0, now);
+            gainNode.gain.linearRampToValueAtTime(0.1, now + 0.01); // Quick attack
+            gainNode.gain.exponentialRampToValueAtTime(0.001, endTime); // Fade out
+            
+            // Set oscillator type
+            oscillator.type = 'sine';
+            
+            // Start and stop
+            oscillator.start(now);
+            oscillator.stop(endTime);
+            
+        } catch (error) {
+            console.log('Sound play error:', error);
+            // Fallback to a simple console notification for development
+            console.log(`🔊 ${soundName} sound played`);
+        }
+    }
+
     setupEventListeners() {
+        // Add one-time user interaction listener to enable audio context
+        const enableAudio = () => {
+            if (!this.audioContext) {
+                try {
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                } catch (e) {
+                    console.log('Audio context creation failed:', e);
+                }
+            }
+            document.removeEventListener('click', enableAudio);
+            document.removeEventListener('keydown', enableAudio);
+        };
+        document.addEventListener('click', enableAudio);
+        document.addEventListener('keydown', enableAudio);
+        
         this.loginTab.addEventListener('click', () => this.switchTab('login'));
         this.registerTab.addEventListener('click', () => this.switchTab('register'));
         this.authForm.addEventListener('submit', (e) => this.handleAuth(e));
@@ -630,11 +726,13 @@ class WebRTCChat {
                 audioTrack.enabled = !audioTrack.enabled;
                 this.isMuted = !audioTrack.enabled;
                 
-                // Update button content while maintaining the same design
+                // Play sound effect
                 if (this.isMuted) {
-                    this.muteBtn.innerHTML = '<span class="mr-2">🔇</span>Unmute';
+                    this.playSound('mute');
+                    this.muteBtn.innerHTML = '<span class="text-sm">🔇</span><span class="hidden sm:inline">Unmute</span>';
                 } else {
-                    this.muteBtn.innerHTML = '<span class="mr-2">🎤</span>Mute';
+                    this.playSound('unmute');
+                    this.muteBtn.innerHTML = '<span class="text-sm">🎤</span><span class="hidden sm:inline">Mute</span>';
                 }
                 
                 // Keep the same CSS classes - no need to change them
@@ -661,6 +759,9 @@ class WebRTCChat {
     }
 
     disconnect() {
+        // Play disconnect sound before disconnecting
+        this.playSound('disconnect');
+        
         if (this.ws) {
             this.ws.close();
         }

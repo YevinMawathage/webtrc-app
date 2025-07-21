@@ -585,6 +585,192 @@
             z-index: -1;
         }
         
+        /* 3D Floating Elements */
+        .floating-3d-element {
+            position: absolute;
+            pointer-events: none;
+            opacity: 0.1;
+            animation: float3d 20s infinite ease-in-out;
+        }
+        
+        .floating-3d-element:nth-child(1) {
+            top: 10%;
+            left: 10%;
+            animation-delay: 0s;
+        }
+        
+        .floating-3d-element:nth-child(2) {
+            top: 20%;
+            right: 10%;
+            animation-delay: -5s;
+        }
+        
+        .floating-3d-element:nth-child(3) {
+            bottom: 20%;
+            left: 15%;
+            animation-delay: -10s;
+        }
+        
+        .floating-3d-element:nth-child(4) {
+            bottom: 10%;
+            right: 20%;
+            animation-delay: -15s;
+        }
+        
+        @keyframes float3d {
+            0%, 100% {
+                transform: translateY(0px) rotateX(0deg) rotateY(0deg) rotateZ(0deg);
+            }
+            25% {
+                transform: translateY(-20px) rotateX(10deg) rotateY(10deg) rotateZ(5deg);
+            }
+            50% {
+                transform: translateY(-10px) rotateX(-5deg) rotateY(-10deg) rotateZ(-5deg);
+            }
+            75% {
+                transform: translateY(-30px) rotateX(15deg) rotateY(-5deg) rotateZ(10deg);
+            }
+        }
+        
+        /* 3D Interactive Cards */
+        .card-3d {
+            perspective: 1000px;
+            transform-style: preserve-3d;
+        }
+        
+        .card-3d-inner {
+            transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transform-style: preserve-3d;
+        }
+        
+        .card-3d:hover .card-3d-inner {
+            transform: rotateY(5deg) rotateX(5deg) scale(1.02);
+        }
+        
+        /* Interactive 3D Logo */
+        .logo-3d {
+            perspective: 1000px;
+            transform-style: preserve-3d;
+        }
+        
+        .logo-3d-inner {
+            transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transform-style: preserve-3d;
+        }
+        
+        .logo-3d:hover .logo-3d-inner {
+            transform: rotateY(360deg) scale(1.1);
+        }
+        
+        /* 3D Tilt Effect for Form Container */
+        .tilt-3d {
+            transform-style: preserve-3d;
+            transition: transform 0.3s ease-out;
+        }
+        
+        /* Parallax Mouse Movement */
+        .parallax-container {
+            perspective: 1000px;
+        }
+        
+        .parallax-element {
+            transform-style: preserve-3d;
+            transition: transform 0.1s ease-out;
+        }
+        
+        /* 3D Button Animations */
+        .btn-3d {
+            position: relative;
+            transform-style: preserve-3d;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        
+        .btn-3d::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: inherit;
+            border-radius: inherit;
+            transform: translateZ(-4px) translateY(4px);
+            opacity: 0.5;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-3d:hover {
+            transform: translateY(-2px) scale(1.02);
+        }
+        
+        .btn-3d:hover::before {
+            transform: translateZ(-8px) translateY(8px);
+            opacity: 0.8;
+        }
+        
+        .btn-3d:active {
+            transform: translateY(0px) scale(0.98);
+        }
+        
+        /* 3D Input Fields */
+        .input-3d {
+            position: relative;
+            transform-style: preserve-3d;
+            transition: all 0.3s ease;
+        }
+        
+        .input-3d:focus {
+            transform: translateZ(5px);
+            box-shadow: 
+                0 10px 25px rgba(255, 255, 255, 0.1),
+                0 5px 15px rgba(255, 255, 255, 0.05);
+        }
+        
+        /* Morphing Shapes */
+        .morph-shape {
+            position: absolute;
+            border-radius: 50%;
+            opacity: 0.05;
+            animation: morphShape 15s infinite ease-in-out;
+        }
+        
+        .morph-shape:nth-child(1) {
+            width: 200px;
+            height: 200px;
+            top: 10%;
+            left: 10%;
+            background: linear-gradient(45deg, #ffffff, #e2e8f0);
+            animation-delay: 0s;
+        }
+        
+        .morph-shape:nth-child(2) {
+            width: 150px;
+            height: 150px;
+            top: 60%;
+            right: 10%;
+            background: linear-gradient(45deg, #e2e8f0, #ffffff);
+            animation-delay: -5s;
+        }
+        
+        @keyframes morphShape {
+            0%, 100% {
+                border-radius: 50%;
+                transform: rotate(0deg) scale(1);
+            }
+            25% {
+                border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+                transform: rotate(90deg) scale(1.1);
+            }
+            50% {
+                border-radius: 70% 30% 30% 70% / 70% 70% 30% 30%;
+                transform: rotate(180deg) scale(0.9);
+            }
+            75% {
+                border-radius: 40% 60% 60% 40% / 60% 40% 60% 40%;
+                transform: rotate(270deg) scale(1.05);
+            }
+        }
+        
         /* Modern login/register form styles */
         .auth-container {
             -webkit-backdrop-filter: blur(20px) saturate(180%);
@@ -1075,7 +1261,7 @@
                         </div>
                     </div>
                     
-                    <div class="mb-6 sm:mb-8">
+                    <div class="flex-1 mb-6 sm:mb-8">
                         <h3 class="text-lg sm:text-xl font-bold mb-4 flex items-center text-white">
                             <span class="mr-3 text-2xl">👥</span>
                             <span class="text-base">Connected Users</span>
@@ -1084,23 +1270,34 @@
                         <div id="users-list" class="space-y-3 custom-scroll max-h-48 sm:max-h-64 overflow-y-auto"></div>
                     </div>
                     
-                    <div class="mt-auto">
-                        <div class="voice-channel rounded-xl p-4 relative overflow-hidden">
-                            <div class="flex items-center justify-between mb-4 mobile-flex-col mobile-space-x-2 space-x-3">
-                                <button id="mute-btn" class="px-4 py-2 bg-gradient-to-r from-black to-gray-800 text-white rounded-lg hover:from-gray-800 hover:to-black transition-all duration-300 transform hover:scale-105 font-bold shadow-lg text-sm border border-white/20 mobile-full-width mobile-mb-2">
-                                    <span class="mr-2">🎤</span>Mute
-                                </button>
-                                <button id="disconnect-btn" class="px-4 py-2 bg-gradient-to-r from-gray-700 to-gray-600 text-white rounded-lg hover:from-gray-600 hover:to-gray-500 transition-all duration-300 transform hover:scale-105 font-bold shadow-lg text-sm border border-white/20 mobile-full-width">
-                                    <span class="mr-2">🚪</span>Disconnect
-                                </button>
-                            </div>
-                            <div class="text-center relative z-10">
-                                <div class="w-12 h-12 bg-gradient-to-r from-white to-gray-200 rounded-full mx-auto mb-3 flex items-center justify-center text-xl font-bold text-black shadow-lg status-online">
-                                    👤
+                    <!-- User Panel at Bottom (Discord Style) -->
+                    <div class="mt-auto bg-gray-900/50 rounded-lg p-3 border border-white/10 backdrop-blur-sm">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center space-x-3 flex-1 min-w-0">
+                                <div class="relative">
+                                    <div class="w-10 h-10 bg-gradient-to-r from-white to-gray-200 rounded-full flex items-center justify-center text-lg font-bold text-black shadow-lg status-online">
+                                        👤
+                                    </div>
                                 </div>
-                                <div class="font-bold text-white text-base" id="current-user">User</div>
-                                <div class="text-sm text-green-400 font-medium">● Online</div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-bold text-white text-sm truncate" id="current-user">User</div>
+                                    <div class="text-xs text-green-400 font-medium">● Online</div>
+                                </div>
                             </div>
+                            <button class="p-2 hover:bg-white/10 rounded-lg transition-colors group">
+                                <span class="text-lg text-gray-300 group-hover:text-white transition-colors">⚙️</span>
+                            </button>
+                        </div>
+                        
+                        <!-- Control Buttons -->
+                        <div class="flex items-center space-x-2">
+                            <button id="mute-btn" class="flex-1 px-3 py-2 bg-gradient-to-r from-gray-700/80 to-gray-600/80 text-white rounded-lg hover:from-gray-600/80 hover:to-gray-500/80 transition-all duration-200 font-medium text-sm border border-white/10 flex items-center justify-center space-x-2">
+                                <span class="text-sm">🎤</span>
+                                <span class="hidden sm:inline">Mute</span>
+                            </button>
+                            <button id="disconnect-btn" class="p-2 bg-gradient-to-r from-red-600/80 to-red-500/80 text-white rounded-lg hover:from-red-500/80 hover:to-red-400/80 transition-all duration-200 border border-white/10">
+                                <span class="text-sm">📞</span>
+                            </button>
                         </div>
                     </div>
                 </div>
