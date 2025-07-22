@@ -25,24 +25,80 @@
             animation: fadeIn 0.5s ease-out;
         }
         
+        .animate-fadeIn {
+            animation: fadeIn 0.3s ease-out;
+        }
+        
         .pulse-animation {
             animation: pulse 2s infinite;
         }
         
-        /* Glass morphism effect */
+        /* Glass morphism effect - Updated for voice chat */
         .glass-effect {
-            backdrop-filter: blur(16px) saturate(180%);
-            background-color: rgba(17, 25, 40, 0.75);
-            border: 1px solid rgba(255, 255, 255, 0.125);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            backdrop-filter: blur(20px) saturate(180%);
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.85), rgba(26, 26, 26, 0.9));
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 
+                0 25px 50px -12px rgba(0, 0, 0, 0.6),
+                0 0 0 1px rgba(255, 255, 255, 0.08),
+                inset 0 1px 0 rgba(255, 255, 255, 0.12);
+        }
+        
+        /* Voice chat specific styles */
+        .voice-sidebar {
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            backdrop-filter: blur(20px) saturate(180%);
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.9), rgba(20, 20, 20, 0.95));
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 
+                5px 0 30px rgba(0, 0, 0, 0.5),
+                inset -1px 0 0 rgba(255, 255, 255, 0.05);
+        }
+        
+        .voice-channel {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .voice-channel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s;
+        }
+        
+        .voice-channel:hover::before {
+            left: 100%;
+        }
+        
+        .voice-channel:hover {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.06));
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 
+                0 8px 25px rgba(0, 0, 0, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        }
+        
+        .voice-main-content {
+            background: linear-gradient(135deg, rgba(10, 10, 10, 0.7), rgba(30, 30, 30, 0.8));
         }
         
         /* Gradient backgrounds */
         .gradient-bg {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #000000 0%, #2d2d2d 100%);
         }
         
         .gradient-text {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #ffffff 0%, #e5e5e5 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -65,6 +121,21 @@
         
         .custom-scroll::-webkit-scrollbar-thumb:hover {
             background: #9ca3af;
+        }
+        
+        /* Video participant preview styles */
+        .video-participant-preview {
+            transition: all 0.3s ease;
+        }
+        
+        .video-participant-preview:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Scrollbar styles for horizontal scrolling */
+        .custom-scroll::-webkit-scrollbar-horizontal {
+            height: 6px;
         }
         
         /* Hover effects */
@@ -104,17 +175,19 @@
         /* Message bubble styles */
         .message-bubble {
             max-width: 100%;
-            min-width: 80px;
+            min-width: 20px;
             word-wrap: break-word;
             word-break: break-word;
             overflow-wrap: break-word;
             hyphens: auto;
-            border-radius: 18px;
-            padding: 12px 16px;
+            border-radius: 14px;
+            padding: 6px 10px;
             position: relative;
             white-space: pre-wrap;
-            line-height: 1.4;
-            display: inline-block;
+            line-height: 1.2;
+            display: inline-flex;
+            align-items: center;
+            min-height: 32px;
             box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
             backdrop-filter: blur(10px);
             transition: all 0.2s ease;
@@ -146,9 +219,12 @@
             overflow-wrap: break-word;
             hyphens: auto;
             white-space: pre-wrap;
-            line-height: 1.5;
+            line-height: 1.2;
             max-width: 100%;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            width: 100%;
         }
 
         /* URL and link handling */
@@ -501,19 +577,119 @@
                 display: block;
             }
         }
-        /* Animated background */
+
+        /* Connection status indicators */
+        .connection-connecting {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(59, 130, 246, 0.1));
+            border-left: 3px solid rgba(59, 130, 246, 0.5);
+            animation: pulse 2s infinite;
+        }
+
+        .connection-connected {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(34, 197, 94, 0.1));
+            border-left: 3px solid rgba(34, 197, 94, 0.5);
+        }
+
+        .connection-disconnected,
+        .connection-failed {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0.1));
+            border-left: 3px solid rgba(239, 68, 68, 0.5);
+        }
+
+        .connection-status {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .mute-indicator {
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
+        }
+
+        .mute-indicator:hover {
+            opacity: 1;
+        }
+
+        /* Enhanced loading overlay */
+        #loading-overlay {
+            backdrop-filter: blur(10px);
+            background: rgba(0, 0, 0, 0.8);
+        }
+
+        #loading-overlay .glass-effect {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* Video popup floating overlay */
+        #video-popup-modal {
+            transition: all 0.3s ease;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
+            position: fixed !important;
+            z-index: 1000;
+        }
+
+        #video-popup-modal:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Disable hover transform when dragging */
+        #video-popup-modal.dragging:hover {
+            transform: none;
+        }
+
+        /* Ensure video popup stays on top but doesn't block interactions */
+        #video-popup-modal.dragging {
+            cursor: move;
+            user-select: none;
+            -webkit-user-select: none;
+            transition: none !important;
+        }
+
+        /* Make video popup header draggable */
+        #video-popup-modal .flex.items-center.justify-between.p-3.border-b {
+            cursor: move;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        #video-popup-modal .flex.items-center.justify-between.p-3.border-b:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* Ensure video elements load properly */
+        #video-popup-modal video {
+            background-color: #000;
+            border-radius: 8px;
+        }
+
+        /* Participant preview hover effects */
+        .video-participant-preview:hover {
+            transform: scale(1.05);
+            transition: transform 0.2s ease;
+        }
+
+        .video-participant-preview video {
+            transition: border-color 0.2s ease;
+        }
+        /* Modern animated background */
         .animated-background {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background-image: url('https://i.pinimg.com/originals/76/27/b7/7627b75c46d61c0d64814032297eb193.gif');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
+            background: linear-gradient(-45deg, #000000, #1a1a1a, #2d2d2d, #404040);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
             z-index: -2;
-            opacity: 0.3;
+        }
+        
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
         }
         
         .background-overlay {
@@ -522,151 +698,1038 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: linear-gradient(135deg, 
-                rgba(55, 48, 163, 0.8), 
-                rgba(147, 51, 234, 0.7), 
-                rgba(168, 85, 247, 0.6));
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(255, 255, 255, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.03) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(255, 255, 255, 0.02) 0%, transparent 50%);
             z-index: -1;
+        }
+        
+        /* 3D Floating Elements */
+        .floating-3d-element {
+            position: absolute;
+            pointer-events: none;
+            opacity: 0.1;
+            animation: float3d 20s infinite ease-in-out;
+        }
+        
+        .floating-3d-element:nth-child(1) {
+            top: 10%;
+            left: 10%;
+            animation-delay: 0s;
+        }
+        
+        .floating-3d-element:nth-child(2) {
+            top: 20%;
+            right: 10%;
+            animation-delay: -5s;
+        }
+        
+        .floating-3d-element:nth-child(3) {
+            bottom: 20%;
+            left: 15%;
+            animation-delay: -10s;
+        }
+        
+        .floating-3d-element:nth-child(4) {
+            bottom: 10%;
+            right: 20%;
+            animation-delay: -15s;
+        }
+        
+        @keyframes float3d {
+            0%, 100% {
+                transform: translateY(0px) rotateX(0deg) rotateY(0deg) rotateZ(0deg);
+            }
+            25% {
+                transform: translateY(-20px) rotateX(10deg) rotateY(10deg) rotateZ(5deg);
+            }
+            50% {
+                transform: translateY(-10px) rotateX(-5deg) rotateY(-10deg) rotateZ(-5deg);
+            }
+            75% {
+                transform: translateY(-30px) rotateX(15deg) rotateY(-5deg) rotateZ(10deg);
+            }
+        }
+        
+        /* 3D Interactive Cards */
+        .card-3d {
+            perspective: 1000px;
+            transform-style: preserve-3d;
+        }
+        
+        .card-3d-inner {
+            transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transform-style: preserve-3d;
+        }
+        
+        .card-3d:hover .card-3d-inner {
+            transform: rotateY(5deg) rotateX(5deg) scale(1.02);
+        }
+        
+        /* Interactive 3D Logo */
+        .logo-3d {
+            perspective: 1000px;
+            transform-style: preserve-3d;
+        }
+        
+        .logo-3d-inner {
+            transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transform-style: preserve-3d;
+        }
+        
+        .logo-3d:hover .logo-3d-inner {
+            transform: rotateY(360deg) scale(1.1);
+        }
+        
+        /* 3D Tilt Effect for Form Container */
+        .tilt-3d {
+            transform-style: preserve-3d;
+            transition: transform 0.3s ease-out;
+        }
+        
+        /* Parallax Mouse Movement */
+        .parallax-container {
+            perspective: 1000px;
+        }
+        
+        .parallax-element {
+            transform-style: preserve-3d;
+            transition: transform 0.1s ease-out;
+        }
+        
+        /* 3D Button Animations */
+        .btn-3d {
+            position: relative;
+            transform-style: preserve-3d;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        
+        .btn-3d::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: inherit;
+            border-radius: inherit;
+            transform: translateZ(-4px) translateY(4px);
+            opacity: 0.5;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-3d:hover {
+            transform: translateY(-2px) scale(1.02);
+        }
+        
+        .btn-3d:hover::before {
+            transform: translateZ(-8px) translateY(8px);
+            opacity: 0.8;
+        }
+        
+        .btn-3d:active {
+            transform: translateY(0px) scale(0.98);
+        }
+        
+        /* 3D Input Fields */
+        .input-3d {
+            position: relative;
+            transform-style: preserve-3d;
+            transition: all 0.3s ease;
+        }
+        
+        .input-3d:focus {
+            transform: translateZ(5px);
+            box-shadow: 
+                0 10px 25px rgba(255, 255, 255, 0.1),
+                0 5px 15px rgba(255, 255, 255, 0.05);
+        }
+        
+        /* Morphing Shapes */
+        .morph-shape {
+            position: absolute;
+            border-radius: 50%;
+            opacity: 0.05;
+            animation: morphShape 15s infinite ease-in-out;
+        }
+        
+        .morph-shape:nth-child(1) {
+            width: 200px;
+            height: 200px;
+            top: 10%;
+            left: 10%;
+            background: linear-gradient(45deg, #ffffff, #e2e8f0);
+            animation-delay: 0s;
+        }
+        
+        .morph-shape:nth-child(2) {
+            width: 150px;
+            height: 150px;
+            top: 60%;
+            right: 10%;
+            background: linear-gradient(45deg, #e2e8f0, #ffffff);
+            animation-delay: -5s;
+        }
+        
+        @keyframes morphShape {
+            0%, 100% {
+                border-radius: 50%;
+                transform: rotate(0deg) scale(1);
+            }
+            25% {
+                border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+                transform: rotate(90deg) scale(1.1);
+            }
+            50% {
+                border-radius: 70% 30% 30% 70% / 70% 70% 30% 30%;
+                transform: rotate(180deg) scale(0.9);
+            }
+            75% {
+                border-radius: 40% 60% 60% 40% / 60% 40% 60% 40%;
+                transform: rotate(270deg) scale(1.05);
+            }
+        }
+        
+        /* Interactive 3D Animations */
+        .interactive-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+        
+        /* Floating Bubbles */
+        .floating-bubble {
+            position: absolute;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02));
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            animation: floatBubble 8s infinite ease-in-out;
+            transform-style: preserve-3d;
+        }
+        
+        .floating-bubble::before {
+            content: '';
+            position: absolute;
+            top: 20%;
+            left: 20%;
+            width: 30%;
+            height: 30%;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.3), transparent);
+            filter: blur(2px);
+        }
+        
+        @keyframes floatBubble {
+            0%, 100% {
+                transform: translateY(0px) translateX(0px) rotateZ(0deg) scale(1);
+                opacity: 0.1;
+            }
+            25% {
+                transform: translateY(-20px) translateX(10px) rotateZ(90deg) scale(1.1);
+                opacity: 0.3;
+            }
+            50% {
+                transform: translateY(-10px) translateX(-15px) rotateZ(180deg) scale(0.9);
+                opacity: 0.2;
+            }
+            75% {
+                transform: translateY(-30px) translateX(5px) rotateZ(270deg) scale(1.05);
+                opacity: 0.25;
+            }
+        }
+        
+        /* Particle System */
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.6);
+            animation: particleFloat 6s infinite ease-in-out;
+            transform-style: preserve-3d;
+        }
+        
+        @keyframes particleFloat {
+            0%, 100% {
+                transform: translateY(0px) translateX(0px) translateZ(0px) scale(1);
+                opacity: 0.6;
+            }
+            25% {
+                transform: translateY(-30px) translateX(20px) translateZ(10px) scale(1.2);
+                opacity: 1;
+            }
+            50% {
+                transform: translateY(-15px) translateX(-25px) translateZ(-5px) scale(0.8);
+                opacity: 0.4;
+            }
+            75% {
+                transform: translateY(-45px) translateX(10px) translateZ(15px) scale(1.1);
+                opacity: 0.8;
+            }
+        }
+        
+        /* Geometric Shapes */
+        .geometric-shape {
+            position: absolute;
+            opacity: 0.08;
+            animation: geometricFloat 12s infinite ease-in-out;
+            transform-style: preserve-3d;
+        }
+        
+        .geometric-triangle {
+            width: 0;
+            height: 0;
+            border-left: 25px solid transparent;
+            border-right: 25px solid transparent;
+            border-bottom: 43px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .geometric-square {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(45deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .geometric-diamond {
+            width: 30px;
+            height: 30px;
+            background: linear-gradient(45deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transform: rotate(45deg);
+        }
+        
+        @keyframes geometricFloat {
+            0%, 100% {
+                transform: translateY(0px) rotate(0deg) scale(1);
+            }
+            25% {
+                transform: translateY(-25px) rotate(90deg) scale(1.1);
+            }
+            50% {
+                transform: translateY(-12px) rotate(180deg) scale(0.9);
+            }
+            75% {
+                transform: translateY(-35px) rotate(270deg) scale(1.05);
+            }
+        }
+        
+        /* Wave Animation */
+        .wave-animation {
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            animation: waveExpand 4s infinite ease-out;
+        }
+        
+        @keyframes waveExpand {
+            0% {
+                transform: scale(0.5);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(3);
+                opacity: 0;
+            }
+        }
+        
+        /* Spiral Animation */
+        .spiral-element {
+            position: absolute;
+            width: 3px;
+            height: 3px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.5);
+            animation: spiralMotion 10s infinite linear;
+        }
+        
+        @keyframes spiralMotion {
+            0% {
+                transform: rotate(0deg) translateX(50px) scale(0.5);
+                opacity: 0;
+            }
+            25% {
+                opacity: 1;
+                transform: rotate(90deg) translateX(100px) scale(1);
+            }
+            50% {
+                transform: rotate(180deg) translateX(150px) scale(1.2);
+            }
+            75% {
+                transform: rotate(270deg) translateX(200px) scale(1);
+            }
+            100% {
+                transform: rotate(360deg) translateX(250px) scale(0.5);
+                opacity: 0;
+            }
+        }
+        
+        /* Interactive Cursor Effect */
+        .cursor-glow {
+            position: fixed;
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 1;
+            transition: transform 0.1s ease-out;
+        }
+        
+        /* 3D Depth Layers */
+        .depth-layer {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            transform-style: preserve-3d;
+        }
+        
+        .depth-layer-1 { transform: translateZ(-100px); }
+        .depth-layer-2 { transform: translateZ(-200px); }
+        .depth-layer-3 { transform: translateZ(-300px); }
+        
+        /* Modern login/register form styles */
+        .auth-container {
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            backdrop-filter: blur(20px) saturate(180%);
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.8), rgba(26, 26, 26, 0.9));
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 
+                0 25px 50px -12px rgba(0, 0, 0, 0.5),
+                0 0 0 1px rgba(255, 255, 255, 0.05),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+        
+        .auth-input {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+        
+        .auth-input:focus {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+            border-color: rgba(255, 255, 255, 0.3);
+            box-shadow: 
+                0 0 0 3px rgba(255, 255, 255, 0.1),
+                inset 0 1px 3px rgba(0, 0, 0, 0.2),
+                0 4px 20px rgba(255, 255, 255, 0.1);
+        }
+        
+        .auth-input::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+        
+        .auth-tab {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .auth-tab::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s;
+        }
+        
+        .auth-tab:hover::before {
+            left: 100%;
+        }
+        
+        .auth-tab.active {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(240, 240, 240, 0.95));
+            color: #000000;
+            box-shadow: 
+                0 4px 15px rgba(255, 255, 255, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        }
+        
+        .auth-tab:not(.active) {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.8);
+        }
+        
+        .auth-submit {
+            background: linear-gradient(135deg, #000000, #1a1a1a, #2d2d2d);
+            background-size: 200% 200%;
+            animation: gradientShift 3s ease infinite;
+            box-shadow: 
+                0 4px 15px rgba(0, 0, 0, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .auth-submit::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .auth-submit:hover::before {
+            left: 100%;
+        }
+        
+        .auth-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 
+                0 8px 25px rgba(0, 0, 0, 0.6),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        }
+        
+        /* Icon animations */
+        .input-icon {
+            transition: all 0.3s ease;
+        }
+        
+        .auth-input:focus + .input-icon,
+        .auth-input:not(:placeholder-shown) + .input-icon {
+            color: #ffffff;
+            transform: scale(1.1);
+        }
+        
+        /* Floating label effect */
+        .floating-label {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: transparent;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.875rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        .auth-input:focus ~ .floating-label,
+        .auth-input:not(:placeholder-shown) ~ .floating-label {
+            top: -8px;
+            left: 8px;
+            font-size: 0.75rem;
+            color: #ffffff;
+            background: linear-gradient(to right, rgba(0, 0, 0, 0.9), rgba(26, 26, 26, 0.9));
+            padding: 0 8px;
+            border-radius: 4px;
+        }
+        
+        /* Loading states */
+        .auth-submit.loading {
+            opacity: 0.8;
+            cursor: not-allowed;
+        }
+        
+        .auth-submit.loading::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            border: 2px solid transparent;
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+        
+        .auth-submit.loading #submit-text {
+            opacity: 0;
+        }
+        
+        /* Enhanced focus effects */
+        .auth-input:focus {
+            transform: translateY(-1px);
+        }
+        
+        /* Success/Error message animations */
+        #auth-message {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* Improved mobile styles */
+        @media (max-width: 480px) {
+            .auth-container {
+                margin: 1rem;
+                padding: 1.5rem;
+            }
+            
+            .auth-input {
+                padding: 0.875rem 1rem 0.875rem 2.75rem;
+                font-size: 1rem;
+            }
+            
+            .floating-label {
+                font-size: 0.875rem;
+            }
+            
+            .auth-input:focus ~ .floating-label,
+            .auth-input:not(:placeholder-shown) ~ .floating-label {
+                font-size: 0.75rem;
+            }
+        }
+        
+        /* Preloader Styles */
+        .preloader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(-45deg, #000000, #1a1a1a, #2d2d2d, #404040);
+            background-size: 400% 400%;
+            animation: gradientShift 3s ease infinite;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+        }
+        
+        .preloader.hide {
+            opacity: 0;
+            visibility: hidden;
+        }
+        
+        .preloader-content {
+            text-align: center;
+            color: white;
+        }
+        
+        .preloader-logo {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ffffff, #e5e5e5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 2rem;
+            font-size: 2rem;
+            animation: pulse 2s ease-in-out infinite, rotate 3s linear infinite;
+            box-shadow: 
+                0 0 30px rgba(255, 255, 255, 0.3),
+                inset 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+        
+        @keyframes rotate {
+            0% { transform: rotate(0deg) scale(1); }
+            50% { transform: rotate(180deg) scale(1.1); }
+            100% { transform: rotate(360deg) scale(1); }
+        }
+        
+        .preloader-text {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #ffffff, #e2e8f0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .preloader-subtitle {
+            font-size: 1rem;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 2rem;
+        }
+        
+        .preloader-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid #ffffff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        .preloader-dots {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 1rem;
+        }
+        
+        .preloader-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.7);
+            margin: 0 4px;
+            animation: dotPulse 1.5s ease-in-out infinite;
+        }
+        
+        .preloader-dot:nth-child(1) { animation-delay: 0s; }
+        .preloader-dot:nth-child(2) { animation-delay: 0.2s; }
+        .preloader-dot:nth-child(3) { animation-delay: 0.4s; }
+        
+        @keyframes dotPulse {
+            0%, 60%, 100% {
+                transform: scale(1);
+                opacity: 0.7;
+            }
+            30% {
+                transform: scale(1.3);
+                opacity: 1;
+            }
+        }
+        
+        /* Mobile preloader adjustments */
+        @media (max-width: 768px) {
+            .preloader-logo {
+                width: 60px;
+                height: 60px;
+                font-size: 1.5rem;
+                margin-bottom: 1.5rem;
+            }
+            
+            .preloader-text {
+                font-size: 1.25rem;
+            }
+            
+            .preloader-subtitle {
+                font-size: 0.875rem;
+            }
         }
     </style>
 </head>
 <body class="text-white min-h-screen relative">
+    <!-- Preloader -->
+    <div id="preloader" class="preloader">
+        <div class="preloader-content">
+            <div class="preloader-logo">
+                🎙️
+            </div>
+            <div class="preloader-text">WebRTC Voice</div>
+            <div class="preloader-subtitle">Loading your audio experience...</div>
+            <div class="preloader-spinner"></div>
+            <div class="preloader-dots">
+                <div class="preloader-dot"></div>
+                <div class="preloader-dot"></div>
+                <div class="preloader-dot"></div>
+            </div>
+        </div>
+    </div>
+    
     <!-- Animated background -->
     <div class="animated-background"></div>
     <div class="background-overlay"></div>
-    <div id="app" class="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
-        <!-- Login/Register Form -->
-        <div id="auth-section" class="max-w-md mx-auto fade-in px-4 sm:px-0">
-            <div class="text-center mb-6 sm:mb-8">
-                <h1 class="text-3xl sm:text-4xl font-bold gradient-text mb-4">🎙️ WebRTC Voice Chat</h1>
-                <p class="text-gray-300 text-base sm:text-lg">Connect and chat with crystal clear audio</p>
-            </div>
+    
+    <!-- Interactive 3D Background -->
+    <div class="interactive-background">
+        <!-- Cursor Glow Effect -->
+        <div id="cursor-glow" class="cursor-glow"></div>
+        
+        <!-- Depth Layers -->
+        <div class="depth-layer depth-layer-1">
+            <!-- Floating Bubbles -->
+            <div class="floating-bubble" style="top: 20%; left: 10%; width: 60px; height: 60px; animation-delay: 0s;"></div>
+            <div class="floating-bubble" style="top: 70%; left: 80%; width: 40px; height: 40px; animation-delay: -2s;"></div>
+            <div class="floating-bubble" style="top: 40%; left: 70%; width: 80px; height: 80px; animation-delay: -4s;"></div>
+            <div class="floating-bubble" style="top: 80%; left: 20%; width: 50px; height: 50px; animation-delay: -6s;"></div>
+        </div>
+        
+        <div class="depth-layer depth-layer-2">
+            <!-- Geometric Shapes -->
+            <div class="geometric-shape geometric-triangle" style="top: 15%; left: 85%; animation-delay: -1s;"></div>
+            <div class="geometric-shape geometric-square" style="top: 60%; left: 15%; animation-delay: -3s;"></div>
+            <div class="geometric-shape geometric-diamond" style="top: 30%; left: 60%; animation-delay: -5s;"></div>
+            <div class="geometric-shape geometric-triangle" style="top: 85%; left: 75%; animation-delay: -7s;"></div>
             
-            <div class="glass-effect rounded-2xl p-6 sm:p-8 shadow-2xl hover-lift">
-                <div class="mb-4 sm:mb-6">
-                    <button id="login-tab" class="px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg mr-2 sm:mr-3 font-semibold transition-all duration-200 hover:from-blue-700 hover:to-blue-800 transform hover:scale-105 text-sm sm:text-base">Login</button>
-                    <button id="register-tab" class="px-4 sm:px-6 py-2 sm:py-3 bg-gray-600 text-white rounded-lg font-semibold transition-all duration-200 hover:bg-gray-500 transform hover:scale-105 text-sm sm:text-base">Register</button>
+            <!-- Wave Animations -->
+            <div class="wave-animation" style="top: 25%; left: 25%; animation-delay: 0s;"></div>
+            <div class="wave-animation" style="top: 65%; left: 65%; animation-delay: -2s;"></div>
+        </div>
+        
+        <div class="depth-layer depth-layer-3">
+            <!-- Spiral Elements -->
+            <div class="spiral-element" style="top: 50%; left: 50%; animation-delay: 0s;"></div>
+            <div class="spiral-element" style="top: 30%; left: 30%; animation-delay: -2s;"></div>
+            <div class="spiral-element" style="top: 70%; left: 70%; animation-delay: -4s;"></div>
+            
+            <!-- Particles -->
+            <div class="particle" style="top: 20%; left: 40%; animation-delay: -1s;"></div>
+            <div class="particle" style="top: 50%; left: 80%; animation-delay: -3s;"></div>
+            <div class="particle" style="top: 80%; left: 60%; animation-delay: -5s;"></div>
+            <div class="particle" style="top: 35%; left: 15%; animation-delay: -7s;"></div>
+            <div class="particle" style="top: 65%; left: 25%; animation-delay: -9s;"></div>
+        </div>
+    </div>
+    <div id="app" class="h-screen overflow-hidden">
+        <!-- Login/Register Form -->
+        <div id="auth-section" class="min-h-screen flex items-center justify-center fade-in px-4 sm:px-6 lg:px-8">
+            <div class="max-w-md w-full space-y-8">
+                <!-- Header -->
+                <div class="text-center">
+                    <div class="mx-auto h-16 w-16 flex items-center justify-center rounded-full bg-gradient-to-r from-white to-gray-200 mb-6 shadow-lg animate-pulse">
+                        <span class="text-2xl">🎙️</span>
+                    </div>
+                    <h1 class="text-4xl sm:text-5xl font-extrabold gradient-text mb-4 tracking-tight">
+                        WebRTC Voice
+                    </h1>
+                    <p class="text-lg text-gray-300 font-medium">Connect with crystal clear audio streaming</p>
                 </div>
                 
-                <form id="auth-form" class="space-y-4 sm:space-y-6">
-                    <div class="relative">
-                        <input type="text" id="username" placeholder="Username" class="w-full pl-10 sm:pl-12 pr-4 py-2.5 sm:py-3 bg-gray-800/50 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-gray-800/70 transition-all duration-200 border border-gray-600/50 text-sm sm:text-base">
-                        <span class="absolute left-2.5 sm:left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm sm:text-base">👤</span>
+                <!-- Form Container -->
+                <div class="auth-container rounded-3xl p-8 sm:p-10 shadow-2xl relative overflow-hidden">
+                    <!-- Decorative elements -->
+                    <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-white via-gray-300 to-white"></div>
+                    <div class="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-white/10 to-gray-400/10 rounded-full blur-3xl"></div>
+                    <div class="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-gray-400/10 to-white/10 rounded-full blur-3xl"></div>
+                    
+                    <!-- Tab Navigation -->
+                    <div class="flex rounded-2xl p-1 mb-8 bg-gray-800/30 border border-gray-700/50 relative gap-2">
+                        <button id="login-tab" class="auth-tab active flex-1 px-6 py-3 text-center font-semibold rounded-xl transition-all duration-300 relative z-10">
+                            <span class="relative z-10">Login</span>
+                        </button>
+                        <button id="register-tab" class="auth-tab flex-1 px-6 py-3 text-center font-semibold rounded-xl transition-all duration-300 relative z-10">
+                            <span class="relative z-10">Register</span>
+                        </button>
                     </div>
-                    <div class="relative">
-                        <input type="password" id="password" placeholder="Password" class="w-full pl-10 sm:pl-12 pr-4 py-2.5 sm:py-3 bg-gray-800/50 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-gray-800/70 transition-all duration-200 border border-gray-600/50 text-sm sm:text-base">
-                        <span class="absolute left-2.5 sm:left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm sm:text-base">🔒</span>
+                    
+                    <!-- Form -->
+                    <form id="auth-form" class="space-y-8 relative z-10">
+                        <!-- Username Field -->
+                        <div class="relative">
+                            <div class="relative">
+                                <input 
+                                    type="text" 
+                                    id="username" 
+                                    title="Username"
+                                    class="auth-input w-full px-4 py-3.5 text-white rounded-xl focus:outline-none text-base pl-12"
+                                    autocomplete="username"
+                                    aria-label="Username"
+                                >
+                                <span class="floating-label">Username</span>
+                                <div class="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-400 input-icon">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Password Field -->
+                        <div class="relative">
+                            <div class="relative">
+                                <input 
+                                    type="password" 
+                                    id="password" 
+                                    title="Password"
+                                    class="auth-input w-full px-4 py-3.5 text-white rounded-xl focus:outline-none text-base pl-12 pr-12"
+                                    autocomplete="current-password"
+                                    aria-label="Password"
+                                >
+                                <span class="floating-label">Password</span>
+                                <div class="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-400 input-icon">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                                    </svg>
+                                </div>
+                                <button type="button" class="absolute right-3.5 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors" title="Show password" aria-label="Show password">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Submit Button -->
+                        <button type="submit" id="auth-submit" class="auth-submit w-full py-4 text-white rounded-xl font-bold text-lg transition-all duration-300 transform hover:scale-[1.02] relative overflow-hidden">
+                            <span class="relative z-10" id="submit-text">Sign In</span>
+                        </button>
+                    </form>
+                    
+                    <!-- Message Display -->
+                    <div id="auth-message" class="mt-6 text-center font-medium transition-all duration-300"></div>
+                    
+                    <!-- Footer -->
+                    <div class="mt-8 text-center">
+                        <p class="text-sm text-gray-400">
+                            By continuing, you agree to our 
+                            <a href="/terms" class="text-white hover:text-gray-300 transition-colors font-medium">Terms of Service</a>
+                        </p>
                     </div>
-                    <button type="submit" id="auth-submit" class="w-full py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 font-semibold transition-all duration-200 transform hover:scale-105 shadow-lg text-sm sm:text-base">Login</button>
-                </form>
+                </div>
                 
-                <div id="auth-message" class="mt-4 sm:mt-6 text-center font-medium text-sm sm:text-base"></div>
+                <!-- Features showcase -->
+                <div class="grid grid-cols-3 gap-4 mt-8">
+                    <div class="text-center p-4 rounded-xl bg-gradient-to-br from-white/5 to-gray-800/30 border border-white/10 backdrop-blur-sm">
+                        <div class="text-2xl mb-2">🔊</div>
+                        <div class="text-sm text-gray-300 font-medium">Crystal Clear</div>
+                    </div>
+                    <div class="text-center p-4 rounded-xl bg-gradient-to-br from-white/5 to-gray-800/30 border border-white/10 backdrop-blur-sm">
+                        <div class="text-2xl mb-2">⚡</div>
+                        <div class="text-sm text-gray-300 font-medium">Real-time</div>
+                    </div>
+                    <div class="text-center p-4 rounded-xl bg-gradient-to-br from-white/5 to-gray-800/30 border border-white/10 backdrop-blur-sm">
+                        <div class="text-2xl mb-2">🔒</div>
+                        <div class="text-sm text-gray-300 font-medium">Secure</div>
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- Main Chat Interface -->
-        <div id="chat-section" class="hidden fade-in">
+        <div id="chat-section" class="hidden fade-in h-screen overflow-hidden">
             <!-- Mobile overlay -->
             <div id="mobile-overlay" class="mobile-overlay"></div>
             
-            <div class="flex h-screen relative">
+            <div class="flex h-full relative">
                 <!-- Sidebar -->
-                <div id="sidebar" class="w-80 lg:w-80 md:w-64 glass-effect p-4 sm:p-6 border-r border-gray-600/30 mobile-sidebar tablet-w-64">
+                <div id="sidebar" class="w-80 lg:w-80 md:w-64 voice-sidebar p-4 sm:p-6 mobile-sidebar tablet-w-64">
                     <div class="mb-6 sm:mb-8">
                         <div class="flex items-center justify-between mb-4">
-                            <h2 class="text-xl sm:text-2xl font-bold gradient-text">🔊 Voice Channels</h2>
-                            <button id="close-sidebar" class="mobile-menu-btn p-2 hover:bg-gray-700/50 rounded-lg transition-colors">
-                                <span class="text-xl">✕</span>
+                            <h2 class="text-xl sm:text-2xl font-bold gradient-text">🎙️ Voice Channels</h2>
+                            <button id="close-sidebar" class="mobile-menu-btn p-2 hover:bg-white/10 rounded-lg transition-colors">
+                                <span class="text-xl text-white">✕</span>
                             </button>
                         </div>
-                        <div id="channels-list" class="space-y-2">
-                            <div class="channel-item p-3 sm:p-4 hover:bg-gray-700/50 cursor-pointer rounded-xl transition-all duration-200 hover-lift border border-gray-600/30" data-channel="general">
-                                <div class="flex items-center space-x-2 sm:space-x-3">
-                                    <span class="text-xl sm:text-2xl">🔊</span>
+                        <div id="channels-list" class="space-y-3">
+                            <div class="voice-channel channel-item p-4 cursor-pointer rounded-xl transition-all duration-300 hover-lift relative z-10" data-channel="general">
+                                <div class="flex items-center space-x-3 relative z-10">
+                                    <div class="w-10 h-10 bg-gradient-to-r from-white to-gray-200 rounded-full flex items-center justify-center text-black font-bold shadow-lg">
+                                        🎙️
+                                    </div>
                                     <div>
-                                        <div class="font-semibold text-sm sm:text-base">General</div>
-                                        <div class="text-xs sm:text-sm text-gray-400">Main voice channel</div>
+                                        <div class="font-bold text-white text-base">General</div>
+                                        <div class="text-xs text-gray-300">Main voice channel</div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="mb-6 sm:mb-8">
-                        <h3 class="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 flex items-center">
-                            <span class="mr-2">👥</span>
-                            <span class="text-sm sm:text-base">Connected Users</span>
-                            <span id="user-count" class="ml-2 bg-blue-600 text-xs px-2 py-1 rounded-full">0</span>
+                    <div class="flex-1 mb-6 sm:mb-8">
+                        <h3 class="text-lg sm:text-xl font-bold mb-4 flex items-center text-white">
+                            <span class="mr-3 text-2xl">👥</span>
+                            <span class="text-base">Connected Users</span>
+                            <span id="user-count" class="ml-3 bg-gradient-to-r from-white to-gray-200 text-black text-xs px-3 py-1 rounded-full font-bold shadow-lg">0</span>
                         </h3>
-                        <div id="users-list" class="space-y-2 sm:space-y-3 custom-scroll max-h-48 sm:max-h-64 overflow-y-auto"></div>
+                        <div id="users-list" class="space-y-3 custom-scroll max-h-48 sm:max-h-64 overflow-y-auto"></div>
                     </div>
                     
-                    <div class="mt-auto">
-                        <div class="glass-effect rounded-xl p-3 sm:p-4 border border-gray-600/30">
-                            <div class="flex items-center justify-between mb-3 sm:mb-4 mobile-flex-col mobile-space-x-2 space-x-2">
-                                <button id="mute-btn" class="px-3 sm:px-4 py-1.5 sm:py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-200 transform hover:scale-105 font-semibold shadow-lg text-xs sm:text-sm mobile-full-width mobile-mb-2">
-                                    🎤 Mute
-                                </button>
-                                <button id="disconnect-btn" class="px-3 sm:px-4 py-1.5 sm:py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition-all duration-200 transform hover:scale-105 font-semibold shadow-lg text-xs sm:text-sm mobile-full-width">
-                                    Disconnect
-                                </button>
-                            </div>
-                            <div class="text-center">
-                                <div class="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full mx-auto mb-2 flex items-center justify-center text-lg sm:text-xl font-bold status-online">
-                                    👤
+                    <!-- User Panel at Bottom (Discord Style) -->
+                    <div class="mt-auto bg-gray-900/50 rounded-lg p-3 border border-white/10 backdrop-blur-sm">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center space-x-3 flex-1 min-w-0">
+                                <div class="relative">
+                                    <div class="w-10 h-10 bg-gradient-to-r from-white to-gray-200 rounded-full flex items-center justify-center text-lg font-bold text-black shadow-lg status-online">
+                                        👤
+                                    </div>
                                 </div>
-                                <div class="font-semibold text-sm sm:text-base" id="current-user">User</div>
-                                <div class="text-xs sm:text-sm text-green-400">● Online</div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-bold text-white text-sm truncate" id="current-user">User</div>
+                                    <div class="text-xs text-green-400 font-medium">● Online</div>
+                                </div>
                             </div>
+                            <button class="p-2 hover:bg-white/10 rounded-lg transition-colors group">
+                                <span class="text-lg text-gray-300 group-hover:text-white transition-colors">⚙️</span>
+                            </button>
+                        </div>
+                        
+                        <!-- Control Buttons -->
+                        <div class="space-y-2">
+                            <!-- Top row: Video and Share buttons -->
+                            <div class="flex items-center gap-2">
+                                <button id="video-btn" class="flex-1 px-3 py-2 bg-gradient-to-r from-black/80 to-gray-900/90 text-white rounded-lg hover:from-white/10 hover:to-gray-200/10 transition-all duration-200 font-medium text-sm border border-white/20 backdrop-blur-sm shadow-lg flex items-center justify-center min-w-0">
+                                    <span class="hidden sm:inline">Video</span>
+                                </button>
+                                <button id="screen-share-btn" class="flex-1 px-3 py-2 bg-gradient-to-r from-black/80 to-gray-900/90 text-white rounded-lg hover:from-white/10 hover:to-gray-200/10 transition-all duration-200 font-medium text-sm border border-white/20 backdrop-blur-sm shadow-lg flex items-center justify-center min-w-0">
+                                    <span class="hidden sm:inline">Share</span>
+                                </button>
+                            </div>
+                            <!-- Middle row: Wide mute button -->
+                            <button id="mute-btn" class="w-full px-4 py-2 bg-gradient-to-r from-black/80 to-gray-900/90 text-white rounded-lg hover:from-white/10 hover:to-gray-200/10 transition-all duration-200 border border-white/20 backdrop-blur-sm shadow-lg flex items-center justify-center font-medium text-sm">
+                                <span class="hidden sm:inline">Mute</span>
+                            </button>
+                            <!-- Bottom row: Wide disconnect button -->
+                            <button id="disconnect-btn" class="w-full px-4 py-3 bg-gradient-to-r from-black/90 to-gray-900/95 text-white rounded-lg hover:from-red-900/30 hover:to-red-800/40 transition-all duration-200 border border-white/20 backdrop-blur-sm shadow-lg flex items-center justify-center space-x-2 font-medium text-sm">
+                                <span class="text-lg">📞</span>
+                                <span class="hidden sm:inline">Disconnect</span>
+                            </button>
                         </div>
                     </div>
                 </div>
 
                 <!-- Main Content -->
-                <div class="flex-1 flex flex-col bg-gray-900/50">
+                <div class="flex-1 flex flex-col voice-main-content">
                     <!-- Channel Header -->
-                    <div class="glass-effect p-4 sm:p-6 border-b border-gray-600/30">
+                    <div class="glass-effect p-4 sm:p-6 border-b border-white/10">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center">
-                                <button id="mobile-menu-btn" class="mobile-menu-btn mr-3 p-2 hover:bg-gray-700/50 rounded-lg transition-colors">
-                                    <span class="text-xl">☰</span>
+                                <button id="mobile-menu-btn" class="mobile-menu-btn mr-3 p-2 hover:bg-white/10 rounded-lg transition-colors">
+                                    <span class="text-xl text-white">☰</span>
                                 </button>
-                                <h2 id="current-channel" class="text-lg sm:text-2xl font-bold flex items-center">
-                                    <span class="mr-2 sm:mr-3 text-2xl sm:text-3xl">🔊</span>
+                                <h2 id="current-channel" class="text-lg sm:text-2xl font-bold flex items-center text-white">
+                                    <span class="mr-3 text-2xl sm:text-3xl">🎙️</span>
                                     <span class="hidden sm:inline"># </span>General
                                 </h2>
                             </div>
                             <div class="flex items-center space-x-2 sm:space-x-4">
-                                <div class="flex items-center space-x-1 sm:space-x-2 bg-green-600/20 px-2 sm:px-3 py-1 rounded-full">
-                                    <div class="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-400 rounded-full animate-pulse"></div>
-                                    <span class="text-xs sm:text-sm text-green-400 font-medium">Live</span>
+                                <div class="flex items-center space-x-1 sm:space-x-2 bg-gradient-to-r from-green-500/20 to-green-400/20 px-3 py-1 rounded-full border border-green-400/30">
+                                    <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-lg"></div>
+                                    <span class="text-xs sm:text-sm text-green-400 font-bold">Live</span>
                                 </div>
-                                <button class="p-1.5 sm:p-2 hover:bg-gray-700/50 rounded-lg transition-colors">
-                                    <span class="text-lg sm:text-xl">⚙️</span>
+                                <button class="p-2 hover:bg-white/10 rounded-lg transition-colors group">
+                                    <span class="text-lg sm:text-xl text-gray-300 group-hover:text-white transition-colors">⚙️</span>
                                 </button>
                             </div>
                         </div>
                     </div>
                     
+                    <!-- Video Feeds -->
+                    <div id="video-container" class="relative flex-1 bg-black/30 overflow-hidden hidden">
+                        <video id="remote-video" autoplay playsinline class="w-full h-full object-cover"></video>
+                        <video id="local-video" autoplay playsinline muted class="absolute bottom-4 right-4 w-1/4 max-w-xs rounded-lg shadow-lg border-2 border-white/20"></video>
+                    </div>
+
                     <!-- Messages -->
-                    <div id="messages" class="flex-1 overflow-y-auto p-3 sm:p-6 space-y-3 sm:space-y-4 custom-scroll bg-gradient-to-b from-transparent to-gray-900/20"></div>
+                    <div id="messages" class="flex-1 overflow-y-auto p-3 sm:p-6 space-y-3 sm:space-y-4 custom-scroll bg-gradient-to-b from-black/20 to-gray-900/40"></div>
                     
                     <!-- Message Input -->
-                    <div class="p-3 sm:p-6 glass-effect border-t border-gray-600/30">
+                    <div class="p-3 sm:p-6 glass-effect border-t border-white/10">
                         <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
                             <div class="flex-1 relative">
-                                <input type="text" id="message-input" placeholder="Type a message..." class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-800/50 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-gray-800/70 transition-all duration-200 border border-gray-600/50 pr-10 sm:pr-12 text-sm sm:text-base">
-                                <button class="absolute right-2 sm:right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors">
-                                    <span class="text-lg sm:text-xl">😊</span>
+                                <input type="text" id="message-input" placeholder="Type a message..." class="w-full px-4 py-3 bg-gradient-to-r from-black/50 to-gray-800/50 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-white/30 focus:bg-black/70 transition-all duration-300 border border-white/20 pr-12 text-base placeholder-gray-400 backdrop-blur-sm">
+                                <button class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors group">
+                                    <span class="text-xl group-hover:scale-110 transition-transform">😊</span>
                                 </button>
                             </div>
-                            <button id="send-btn" class="px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 font-semibold transition-all duration-200 transform hover:scale-105 shadow-lg text-sm sm:text-base">
-                                <span class="mr-1 sm:mr-2">📤</span>
+                            <button id="send-btn" class="px-6 py-3 bg-gradient-to-r from-white to-gray-200 text-black rounded-xl hover:from-gray-200 hover:to-white font-bold transition-all duration-300 transform hover:scale-105 shadow-lg text-base border border-gray-300">
                                 Send
                             </button>
                         </div>
-                        <div class="mt-2 sm:mt-3 flex flex-col sm:flex-row items-center justify-between text-xs sm:text-sm text-gray-400 space-y-2 sm:space-y-0">
-                            <div class="hidden sm:block">Press Enter to send</div>
+                        <div class="mt-3 flex flex-col sm:flex-row items-center justify-between text-xs sm:text-sm text-gray-400 space-y-2 sm:space-y-0">
+                            <div class="hidden sm:block font-medium">Press Enter to send</div>
                         </div>
                     </div>
                 </div>
@@ -674,8 +1737,71 @@
         </div>
     </div>
 
-    <!-- Audio elements for remote streams -->
-    <div id="remote-audio-container"></div>
+    <!-- Video and Audio elements for remote streams -->
+    <div id="remote-media-container"></div>
+
+    <!-- Video Popup Modal -->
+    <div id="video-popup-modal" class="fixed bottom-20 right-4 z-50 hidden w-[600px] max-w-[90vw] bg-gradient-to-t from-gray-900 to-gray-800 border border-white/20 rounded-xl shadow-2xl resize overflow-auto">
+            <!-- Header -->
+            <div class="flex items-center justify-between p-3 border-b border-white/10 cursor-move">
+                <div class="flex items-center space-x-2">
+                    <svg class="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 24 24" title="Drag to move">
+                        <path d="M9 5h2v2H9V5zm0 3h2v2H9V8zm0 3h2v2H9v-2zm0 3h2v2H9v-2zm0 3h2v2H9v-2zm3-12h2v2h-2V5zm0 3h2v2h-2V8zm0 3h2v2h-2v-2zm0 3h2v2h-2v-2zm0 3h2v2h-2v-2z"></path>
+                    </svg>
+                    <h3 id="video-popup-title" class="text-sm font-semibold text-white">Video Chat - <span id="active-participants-count">0</span> participant(s)</h3>
+                </div>
+                <div class="flex items-center space-x-1">
+                    <button id="minimize-video" class="p-1.5 hover:bg-white/10 rounded-lg transition-colors" title="Minimize">
+                        <svg class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
+                        </svg>
+                    </button>
+                    <button id="close-video-popup" class="p-1.5 hover:bg-white/10 rounded-lg transition-colors" title="Close">
+                        <svg class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Video Content -->
+            <div class="relative p-3 max-h-[70vh] overflow-y-auto">
+                <!-- Main Video Area (Spotlight mode) -->
+                <div id="main-video-container" class="relative w-full h-64 mb-3 hidden">
+                    <video id="popup-main-video" autoplay playsinline class="w-full h-full object-cover rounded-lg bg-black"></video>
+                    <div class="absolute bottom-2 left-2 bg-black/80 text-white px-2 py-1 rounded text-xs font-medium">
+                        <span id="main-video-username">Spotlight</span>
+                    </div>
+                    <div class="absolute top-2 right-2 bg-black/60 text-white px-2 py-1 rounded text-xs">
+                        Click any participant below to change spotlight
+                    </div>
+                </div>
+                
+                <!-- Grid View for Multiple Participants (Discord-style) -->
+                <div id="video-grid-container" class="grid gap-2 mb-3">
+                    <!-- Participants will be added here in grid format -->
+                </div>
+                
+                <!-- Info text when no participants -->
+                <div id="no-participants-message" class="text-center text-gray-400 py-8 text-sm">
+                    No video participants yet. Enable your camera to start video chat!
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Minimized Video Indicator -->
+    <div id="minimized-video-indicator" class="fixed bottom-4 right-4 z-40 hidden">
+        <button class="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-3 py-2 rounded-lg shadow-lg border border-white/20 backdrop-blur-sm transition-all duration-200" title="Restore video chat">
+            <div class="flex items-center space-x-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                </svg>
+                <span class="text-xs font-medium">Video</span>
+                <span id="minimized-participant-count" class="bg-white/20 text-xs px-1.5 py-0.5 rounded-full">1</span>
+            </div>
+        </button>
+    </div>
 
     <!-- Loading overlay -->
     <div id="loading-overlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 hidden">
@@ -686,6 +1812,287 @@
         </div>
     </div>
 
-    <script src="app.js?v=4"></script>
+    <script src="app.js?v=5"></script>
+    
+    <!-- 3D Interactive Background Script -->
+    <script>
+        // Interactive 3D Background System
+        document.addEventListener('DOMContentLoaded', function() {
+            let mouseX = 0;
+            let mouseY = 0;
+            let animationId;
+            
+            // Cursor glow effect
+            const cursorGlow = document.getElementById('cursor-glow');
+            
+            // Mouse tracking
+            document.addEventListener('mousemove', function(e) {
+                mouseX = e.clientX;
+                mouseY = e.clientY;
+                
+                // Update cursor glow position
+                if (cursorGlow) {
+                    cursorGlow.style.left = (mouseX - 150) + 'px';
+                    cursorGlow.style.top = (mouseY - 150) + 'px';
+                }
+                
+                // Update parallax layers
+                updateParallaxLayers(mouseX, mouseY);
+            });
+            
+            // Parallax effect for depth layers
+            function updateParallaxLayers(mouseX, mouseY) {
+                const centerX = window.innerWidth / 2;
+                const centerY = window.innerHeight / 2;
+                const moveX = (mouseX - centerX) / centerX;
+                const moveY = (mouseY - centerY) / centerY;
+                
+                // Apply different movements to different depth layers
+                const layer1 = document.querySelector('.depth-layer-1');
+                const layer2 = document.querySelector('.depth-layer-2');
+                const layer3 = document.querySelector('.depth-layer-3');
+                
+                if (layer1) {
+                    layer1.style.transform = `translateZ(-100px) translateX(${moveX * 20}px) translateY(${moveY * 20}px)`;
+                }
+                if (layer2) {
+                    layer2.style.transform = `translateZ(-200px) translateX(${moveX * 40}px) translateY(${moveY * 40}px)`;
+                }
+                if (layer3) {
+                    layer3.style.transform = `translateZ(-300px) translateX(${moveX * 60}px) translateY(${moveY * 60}px)`;
+                }
+                
+                // Update individual elements
+                updateBubbles(moveX, moveY);
+                updateGeometricShapes(moveX, moveY);
+                updateParticles(moveX, moveY);
+            }
+            
+            // Dynamic bubble movement
+            function updateBubbles(moveX, moveY) {
+                const bubbles = document.querySelectorAll('.floating-bubble');
+                bubbles.forEach((bubble, index) => {
+                    const factor = (index + 1) * 0.3;
+                    const currentTransform = bubble.style.transform || '';
+                    bubble.style.transform = currentTransform + ` translate(${moveX * factor * 10}px, ${moveY * factor * 10}px)`;
+                });
+            }
+            
+            // Dynamic geometric shapes movement
+            function updateGeometricShapes(moveX, moveY) {
+                const shapes = document.querySelectorAll('.geometric-shape');
+                shapes.forEach((shape, index) => {
+                    const factor = (index + 1) * 0.2;
+                    const rotation = moveX * 30 + moveY * 20;
+                    shape.style.transform += ` translate(${moveX * factor * 8}px, ${moveY * factor * 8}px) rotate(${rotation}deg)`;
+                });
+            }
+            
+            // Dynamic particle movement
+            function updateParticles(moveX, moveY) {
+                const particles = document.querySelectorAll('.particle');
+                particles.forEach((particle, index) => {
+                    const factor = (index + 1) * 0.1;
+                    particle.style.transform += ` translate(${moveX * factor * 15}px, ${moveY * factor * 15}px)`;
+                });
+            }
+            
+            // Create additional dynamic elements
+            function createDynamicElements() {
+                // Create random bubbles
+                setInterval(() => {
+                    if (Math.random() < 0.3) {
+                        createRandomBubble();
+                    }
+                }, 2000);
+                
+                // Create random particles
+                setInterval(() => {
+                    if (Math.random() < 0.5) {
+                        createRandomParticle();
+                    }
+                }, 1500);
+            }
+            
+            // Create random bubble
+            function createRandomBubble() {
+                const bubble = document.createElement('div');
+                bubble.className = 'floating-bubble';
+                bubble.style.position = 'absolute';
+                bubble.style.top = Math.random() * 100 + '%';
+                bubble.style.left = Math.random() * 100 + '%';
+                bubble.style.width = (20 + Math.random() * 40) + 'px';
+                bubble.style.height = bubble.style.width;
+                bubble.style.animationDelay = Math.random() * 8 + 's';
+                bubble.style.opacity = '0.05';
+                
+                const layer = document.querySelector('.depth-layer-' + (Math.floor(Math.random() * 3) + 1));
+                if (layer) {
+                    layer.appendChild(bubble);
+                    
+                    // Remove after animation cycle
+                    setTimeout(() => {
+                        if (bubble.parentNode) {
+                            bubble.parentNode.removeChild(bubble);
+                        }
+                    }, 8000);
+                }
+            }
+            
+            // Create random particle
+            function createRandomParticle() {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.position = 'absolute';
+                particle.style.top = Math.random() * 100 + '%';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 6 + 's';
+                
+                const layer = document.querySelector('.depth-layer-3');
+                if (layer) {
+                    layer.appendChild(particle);
+                    
+                    // Remove after animation cycle
+                    setTimeout(() => {
+                        if (particle.parentNode) {
+                            particle.parentNode.removeChild(particle);
+                        }
+                    }, 6000);
+                }
+            }
+            
+            // Click interaction - create wave effect
+            document.addEventListener('click', function(e) {
+                createWaveEffect(e.clientX, e.clientY);
+            });
+            
+            // Create wave effect on click
+            function createWaveEffect(x, y) {
+                const wave = document.createElement('div');
+                wave.className = 'wave-animation';
+                wave.style.position = 'fixed';
+                wave.style.left = (x - 100) + 'px';
+                wave.style.top = (y - 100) + 'px';
+                wave.style.zIndex = '2';
+                wave.style.pointerEvents = 'none';
+                
+                document.body.appendChild(wave);
+                
+                // Remove after animation
+                setTimeout(() => {
+                    if (wave.parentNode) {
+                        wave.parentNode.removeChild(wave);
+                    }
+                }, 4000);
+            }
+            
+            // Form interaction effects
+            const authContainer = document.querySelector('.auth-container');
+           
+            if (authContainer) {
+                authContainer.addEventListener('mouseenter', function() {
+                    // Intensify animations when hovering over form
+                    document.querySelectorAll('.floating-bubble').forEach(bubble => {
+                        bubble.style.animationDuration = '4s';
+                    });
+                    document.querySelectorAll('.particle').forEach(particle => {
+                        particle.style.animationDuration = '3s';
+                    });
+                });
+                
+                authContainer.addEventListener('mouseleave', function() {
+                    // Return to normal speed
+                    document.querySelectorAll('.floating-bubble').forEach(bubble => {
+                        bubble.style.animationDuration = '8s';
+                    });
+                    document.querySelectorAll('.particle').forEach(particle => {
+                        particle.style.animationDuration = '6s';
+                    });
+                });
+            }
+            
+            // Input focus effects
+            const inputs = document.querySelectorAll('.auth-input');
+            inputs.forEach(input => {
+                input.addEventListener('focus', function() {
+                    // Create spiral effect around input
+                    createSpiralEffect(this);
+                });
+            });
+            
+            // Create spiral effect
+            function createSpiralEffect(element) {
+                const rect = element.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                
+                for (let i = 0; i < 8; i++) {
+                    setTimeout(() => {
+                        const spiral = document.createElement('div');
+                        spiral.className = 'spiral-element';
+                        spiral.style.position = 'fixed';
+                        spiral.style.left = centerX + 'px';
+                        spiral.style.top = centerY + 'px';
+                        spiral.style.zIndex = '1';
+                        spiral.style.animationDelay = (i * 0.2) + 's';
+                        
+                        document.body.appendChild(spiral);
+                        
+                        setTimeout(() => {
+                            if (spiral.parentNode) {
+                                spiral.parentNode.removeChild(spiral);
+                            }
+                        }, 3000);
+                    }, i * 100);
+                }
+            }
+            
+            // Initialize dynamic elements
+            createDynamicElements();
+            
+            // Performance optimization - pause animations when tab is not visible
+            document.addEventListener('visibilitychange', function() {
+                const elements = document.querySelectorAll('.floating-bubble, .particle, .geometric-shape, .spiral-element');
+                if (document.hidden) {
+                    elements.forEach(el => {
+                        el.style.animationPlayState = 'paused';
+                    });
+                } else {
+                    elements.forEach(el => {
+                        el.style.animationPlayState = 'running';
+                    });
+                }
+            });
+        });
+    </script>
+    
+    <!-- Preloader Script -->
+    <script>
+        // Preloader functionality
+        window.addEventListener('load', function() {
+            const preloader = document.getElementById('preloader');
+            
+            // Add a minimum loading time for better UX
+            setTimeout(() => {
+                preloader.classList.add('hide');
+                
+                // Remove preloader from DOM after animation
+                setTimeout(() => {
+                    preloader.remove();
+                }, 500);
+            }, 500); // Show preloader for at least 1.5 seconds
+        });
+        
+        // Hide preloader if taking too long (fallback)
+        setTimeout(() => {
+            const preloader = document.getElementById('preloader');
+            if (preloader) {
+                preloader.classList.add('hide');
+                setTimeout(() => {
+                    preloader.remove();
+                }, 500);
+            }
+        }, 5000); // Maximum 5 seconds
+    </script>
 </body>
 </html>

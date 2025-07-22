@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebRTC Connection Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f0f0f0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success { border-color: #28a745; background: #d4edda; }
+        .error { border-color: #dc3545; background: #f8d7da; }
+        .warning { border-color: #ffc107; background: #fff3cd; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 3px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        .log {
+            height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin: 10px 0;
+            background: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>WebRTC Connection Test</h1>
+        <p>This page will help diagnose WebRTC connection issues.</p>
+
+        <div class="test-section">
+            <h3>1. ICE Server Test</h3>
+            <button onclick="testIceServers()">Test ICE Servers</button>
+            <div id="ice-results"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>2. Peer Connection Test</h3>
+            <button onclick="testPeerConnection()">Test Peer Connection</button>
+            <div id="peer-results"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>3. Network Information</h3>
+            <div id="network-info"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>4. Connection Log</h3>
+            <div id="connection-log" class="log"></div>
+            <button onclick="clearLog()">Clear Log</button>
+        </div>
+
+        <div class="test-section">
+            <h3>5. Recommendations</h3>
+            <div id="recommendations"></div>
+        </div>
+    </div>
+
+    <script>
+        const log = document.getElementById('connection-log');
+        
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.innerHTML = `<span style="color: #666;">[${timestamp}]</span> <span style="color: ${type === 'error' ? 'red' : type === 'success' ? 'green' : 'black'};">${message}</span>`;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function clearLog() {
+            log.innerHTML = '';
+        }
+
+        async function testIceServers() {
+            const iceResults = document.getElementById('ice-results');
+            iceResults.innerHTML = '<p>Testing ICE servers...</p>';
+            addLog('Starting ICE server test...');
+
+            const iceServers = [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                {
+                    urls: 'turn:openrelay.metered.ca:80',
+                    username: 'openrelayproject',
+                    credential: 'openrelayproject'
+                },
+                {
+                    urls: 'turn:openrelay.metered.ca:443',
+                    username: 'openrelayproject',
+                    credential: 'openrelayproject'
+                }
+            ];
+
+            const pc = new RTCPeerConnection({ iceServers });
+            const candidates = [];
+
+            pc.onicecandidate = (event) => {
+                if (event.candidate) {
+                    candidates.push(event.candidate);
+                    addLog(`ICE candidate: ${event.candidate.type} ${event.candidate.candidate}`, 'success');
+                } else {
+                    addLog('ICE gathering complete', 'success');
+                    displayIceResults(candidates);
+                }
+            };
+
+            pc.onicegatheringstatechange = () => {
+                addLog(`ICE gathering state: ${pc.iceGatheringState}`);
+            };
+
+            // Create a dummy data channel to trigger ICE gathering
+            pc.createDataChannel('test');
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+
+            function displayIceResults(candidates) {
+                const types = {};
+                candidates.forEach(candidate => {
+                    const type = candidate.type;
+                    types[type] = (types[type] || 0) + 1;
+                });
+
+                let html = '<h4>ICE Candidates Found:</h4><ul>';
+                Object.entries(types).forEach(([type, count]) => {
+                    html += `<li>${type}: ${count} candidates</li>`;
+                });
+                html += '</ul>';
+
+                const hasHost = types.host > 0;
+                const hasSrflx = types.srflx > 0;
+                const hasRelay = types.relay > 0;
+
+                html += '<h4>Analysis:</h4><ul>';
+                html += hasHost ? '<li style="color: green;">✓ Host candidates found (local network)</li>' : '<li style="color: red;">✗ No host candidates</li>';
+                html += hasSrflx ? '<li style="color: green;">✓ Server reflexive candidates found (STUN working)</li>' : '<li style="color: red;">✗ No server reflexive candidates (STUN may be blocked)</li>';
+                html += hasRelay ? '<li style="color: green;">✓ Relay candidates found (TURN working)</li>' : '<li style="color: orange;">⚠ No relay candidates (TURN may not be working)</li>';
+                html += '</ul>';
+
+                iceResults.innerHTML = html;
+                pc.close();
+            }
+        }
+
+        async function testPeerConnection() {
+            const peerResults = document.getElementById('peer-results');
+            peerResults.innerHTML = '<p>Testing peer connection...</p>';
+            addLog('Starting peer connection test...');
+
+            const iceServers = [
+                { urls: 'stun:stun.l.google.com:19302' },
+                {
+                    urls: 'turn:openrelay.metered.ca:80',
+                    username: 'openrelayproject',
+                    credential: 'openrelayproject'
+                }
+            ];
+
+            const pc1 = new RTCPeerConnection({ iceServers });
+            const pc2 = new RTCPeerConnection({ iceServers });
+
+            let pc1Connected = false;
+            let pc2Connected = false;
+
+            pc1.onconnectionstatechange = () => {
+                addLog(`PC1 connection state: ${pc1.connectionState}`);
+                if (pc1.connectionState === 'connected') pc1Connected = true;
+                checkBothConnected();
+            };
+
+            pc2.onconnectionstatechange = () => {
+                addLog(`PC2 connection state: ${pc2.connectionState}`);
+                if (pc2.connectionState === 'connected') pc2Connected = true;
+                checkBothConnected();
+            };
+
+            pc1.onicecandidate = (event) => {
+                if (event.candidate) {
+                    pc2.addIceCandidate(event.candidate);
+                }
+            };
+
+            pc2.onicecandidate = (event) => {
+                if (event.candidate) {
+                    pc1.addIceCandidate(event.candidate);
+                }
+            };
+
+            function checkBothConnected() {
+                if (pc1Connected && pc2Connected) {
+                    peerResults.innerHTML = '<div class="success">✓ Peer connection test successful!</div>';
+                    addLog('Peer connection test completed successfully', 'success');
+                    setTimeout(() => {
+                        pc1.close();
+                        pc2.close();
+                    }, 1000);
+                }
+            }
+
+            // Set up the connection
+            pc1.createDataChannel('test');
+            const offer = await pc1.createOffer();
+            await pc1.setLocalDescription(offer);
+            await pc2.setRemoteDescription(offer);
+            
+            const answer = await pc2.createAnswer();
+            await pc2.setLocalDescription(answer);
+            await pc1.setRemoteDescription(answer);
+
+            // Timeout after 10 seconds
+            setTimeout(() => {
+                if (!pc1Connected || !pc2Connected) {
+                    peerResults.innerHTML = '<div class="error">✗ Peer connection test failed (timeout)</div>';
+                    addLog('Peer connection test failed - timeout', 'error');
+                    pc1.close();
+                    pc2.close();
+                }
+            }, 10000);
+        }
+
+        function displayNetworkInfo() {
+            const networkInfo = document.getElementById('network-info');
+            let html = '<h4>Browser Support:</h4><ul>';
+            
+            html += navigator.mediaDevices ? '<li style="color: green;">✓ getUserMedia supported</li>' : '<li style="color: red;">✗ getUserMedia not supported</li>';
+            html += window.RTCPeerConnection ? '<li style="color: green;">✓ RTCPeerConnection supported</li>' : '<li style="color: red;">✗ RTCPeerConnection not supported</li>';
+            html += navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia ? '<li style="color: green;">✓ Screen sharing supported</li>' : '<li style="color: red;">✗ Screen sharing not supported</li>';
+            
+            html += '</ul><h4>Connection Info:</h4><ul>';
+            html += `<li>User Agent: ${navigator.userAgent}</li>`;
+            html += `<li>Protocol: ${location.protocol}</li>`;
+            html += `<li>Host: ${location.host}</li>`;
+            html += '</ul>';
+
+            networkInfo.innerHTML = html;
+        }
+
+        function displayRecommendations() {
+            const recommendations = document.getElementById('recommendations');
+            let html = '<h4>If you\'re experiencing connection issues:</h4><ul>';
+            html += '<li>Ensure both browsers support WebRTC</li>';
+            html += '<li>Try using Chrome or Firefox for better WebRTC support</li>';
+            html += '<li>Check if your firewall is blocking WebRTC traffic</li>';
+            html += '<li>If behind a corporate firewall, TURN servers may be necessary</li>';
+            html += '<li>Try connecting from different networks to isolate network issues</li>';
+            html += '<li>Consider using HTTPS if experiencing issues with HTTP</li>';
+            html += '</ul>';
+            recommendations.innerHTML = html;
+        }
+
+        // Initialize on page load
+        window.onload = () => {
+            displayNetworkInfo();
+            displayRecommendations();
+            addLog('Connection test page loaded');
+        };
+    </script>
+</body>
+</html>
