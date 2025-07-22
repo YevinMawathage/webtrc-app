@@ -619,6 +619,36 @@
             background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
             border: 1px solid rgba(255, 255, 255, 0.2);
         }
+
+        /* Video popup floating overlay */
+        #video-popup-modal {
+            transition: all 0.3s ease;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
+        }
+
+        #video-popup-modal:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Ensure video popup stays on top but doesn't block interactions */
+        #video-popup-modal.dragging {
+            cursor: move;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* Make video popup header draggable */
+        #video-popup-modal .flex.items-center.justify-between.p-3.border-b {
+            cursor: move;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        #video-popup-modal .flex.items-center.justify-between.p-3.border-b:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
         /* Modern animated background */
         .animated-background {
             position: fixed;
@@ -1687,15 +1717,15 @@
     <div id="remote-media-container"></div>
 
     <!-- Video Popup Modal -->
-    <div id="video-popup-modal" class="fixed inset-0 z-50 hidden">
-        <!-- Backdrop -->
-        <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
-        
-        <!-- Modal Content positioned at bottom-right -->
-        <div class="absolute bottom-4 right-4 w-96 max-w-sm bg-gradient-to-t from-gray-900 to-gray-800 border border-white/20 rounded-xl shadow-2xl">
+    <div id="video-popup-modal" class="fixed bottom-20 right-4 z-50 hidden w-96 max-w-sm bg-gradient-to-t from-gray-900 to-gray-800 border border-white/20 rounded-xl shadow-2xl">
             <!-- Header -->
             <div class="flex items-center justify-between p-3 border-b border-white/10">
-                <h3 id="video-popup-title" class="text-sm font-semibold text-white">Video Chat - <span id="active-participants-count">1</span> participant(s)</h3>
+                <div class="flex items-center space-x-2">
+                    <svg class="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 24 24" title="Drag to move">
+                        <path d="M9 5h2v2H9V5zm0 3h2v2H9V8zm0 3h2v2H9v-2zm0 3h2v2H9v-2zm0 3h2v2H9v-2zm3-12h2v2h-2V5zm0 3h2v2h-2V8zm0 3h2v2h-2v-2zm0 3h2v2h-2v-2zm0 3h2v2h-2v-2z"></path>
+                    </svg>
+                    <h3 id="video-popup-title" class="text-sm font-semibold text-white">Video Chat - <span id="active-participants-count">1</span> participant(s)</h3>
+                </div>
                 <div class="flex items-center space-x-1">
                     <button id="minimize-video" class="p-1.5 hover:bg-white/10 rounded-lg transition-colors" title="Minimize">
                         <svg class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">

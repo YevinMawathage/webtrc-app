@@ -247,6 +247,9 @@ class WebRTCChat {
         if (this.minimizedVideoIndicator) {
             this.minimizedVideoIndicator.addEventListener('click', () => this.restoreVideoPopup());
         }
+
+        // Add drag functionality to video popup
+        this.setupVideoPopupDrag();
         
         this.channelsList.addEventListener('click', (e) => {
             const channelItem = e.target.closest('.channel-item');
@@ -1700,6 +1703,74 @@ class WebRTCChat {
             }
         }
         return false;
+    }
+
+    // Setup drag functionality for video popup
+    setupVideoPopupDrag() {
+        if (!this.videoPopupModal) return;
+
+        let isDragging = false;
+        let startX, startY, startLeft, startTop;
+
+        // Get the header element for dragging
+        const getHeader = () => this.videoPopupModal.querySelector('.flex.items-center.justify-between.p-3.border-b');
+
+        const onMouseDown = (e) => {
+            const header = getHeader();
+            if (!header || !header.contains(e.target)) return;
+            
+            // Don't drag if clicking on buttons
+            if (e.target.closest('button')) return;
+
+            isDragging = true;
+            this.videoPopupModal.classList.add('dragging');
+            
+            startX = e.clientX;
+            startY = e.clientY;
+            
+            const rect = this.videoPopupModal.getBoundingClientRect();
+            startLeft = rect.left;
+            startTop = rect.top;
+            
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+            e.preventDefault();
+        };
+
+        const onMouseMove = (e) => {
+            if (!isDragging) return;
+            
+            const deltaX = e.clientX - startX;
+            const deltaY = e.clientY - startY;
+            
+            let newLeft = startLeft + deltaX;
+            let newTop = startTop + deltaY;
+            
+            // Keep popup within viewport bounds
+            const rect = this.videoPopupModal.getBoundingClientRect();
+            const maxLeft = window.innerWidth - rect.width;
+            const maxTop = window.innerHeight - rect.height;
+            
+            newLeft = Math.max(0, Math.min(newLeft, maxLeft));
+            newTop = Math.max(0, Math.min(newTop, maxTop));
+            
+            this.videoPopupModal.style.left = newLeft + 'px';
+            this.videoPopupModal.style.top = newTop + 'px';
+            this.videoPopupModal.style.right = 'auto';
+            this.videoPopupModal.style.bottom = 'auto';
+        };
+
+        const onMouseUp = () => {
+            if (!isDragging) return;
+            
+            isDragging = false;
+            this.videoPopupModal.classList.remove('dragging');
+            
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+        };
+
+        this.videoPopupModal.addEventListener('mousedown', onMouseDown);
     }
 
     async toggleScreenShare() {
