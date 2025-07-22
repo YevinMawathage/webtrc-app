@@ -60,7 +60,6 @@ class WebRTCChat {
         // Video popup elements
         this.videoPopupModal = document.getElementById('video-popup-modal');
         this.popupMainVideo = document.getElementById('popup-main-video');
-        this.popupLocalVideo = document.getElementById('popup-local-video');
         this.closeVideoPopup = document.getElementById('close-video-popup');
         this.minimizeVideo = document.getElementById('minimize-video');
         this.minimizedVideoIndicator = document.getElementById('minimized-video-indicator');
@@ -410,9 +409,10 @@ class WebRTCChat {
                 this.localVideo.style.opacity = '0.3'; // Dim the local video to show it's off
             }
             
-            // Keep video container hidden initially since video is off
+            // Keep video container hidden - we use the video popup for video display
             this.videoContainer.classList.add('hidden');
-            this.messagesDiv.classList.remove('hidden'); // Show text chat instead
+            // Always show chat messages - they should be available alongside video
+            this.messagesDiv.classList.remove('hidden');
             
             this.displaySystemMessage('Camera and microphone ready (video off by default)');
         } catch (error) {
@@ -670,15 +670,9 @@ class WebRTCChat {
             currentUserDiv.className = 'flex items-center space-x-2 p-2 bg-gradient-to-r from-white/10 to-gray-200/10 rounded border border-white/20 backdrop-blur-sm';
             currentUserDiv.dataset.user = this.currentUser;
             
-            // Check current user's video status
-            const hasVideo = this.localStream && this.localStream.getVideoTracks()[0] && this.localStream.getVideoTracks()[0].enabled;
-            const videoIcon = hasVideo ? '📹' : '📷';
-            const videoTitle = hasVideo ? 'Video On' : 'Video Off';
-            
             currentUserDiv.innerHTML = `
                 <div class="w-2 h-2 bg-white rounded-full animate-pulse"></div>
                 <span class="font-semibold text-white">${this.currentUser} (You)</span>
-                <span class="video-status text-xs" title="${videoTitle}">${videoIcon}</span>
             `;
             this.usersList.appendChild(currentUserDiv);
         }
@@ -692,7 +686,6 @@ class WebRTCChat {
                 userDiv.innerHTML = `
                     <div class="w-2 h-2 bg-green-500 rounded-full"></div>
                     <span>${username}</span>
-                    <span class="video-status text-xs" title="Video Off">📷</span>
                 `;
                 this.usersList.appendChild(userDiv);
                 // Initiate connection to existing users
@@ -713,7 +706,6 @@ class WebRTCChat {
         userDiv.innerHTML = `
             <div class="w-2 h-2 bg-green-500 rounded-full"></div>
             <span>${username}</span>
-            <span class="video-status text-xs" title="Video Off">📷</span>
         `;
         this.usersList.appendChild(userDiv);
         
@@ -948,7 +940,7 @@ class WebRTCChat {
         // Remove from video chat if participating
         this.removeVideoParticipant(username);
         
-        // If no more peer connections, clear remote video and show messages
+        // If no more peer connections, clear remote video
         if (this.peerConnections.size === 0) {
             this.remoteVideo.srcObject = null;
             // Only close popup if there are no video participants
@@ -956,10 +948,8 @@ class WebRTCChat {
                 this.videoPopupModal.classList.add('hidden');
                 this.minimizedVideoIndicator.classList.add('hidden');
             }
-            if (!this.videoContainer.classList.contains('hidden')) {
-                this.videoContainer.classList.add('hidden');
-                this.messagesDiv.classList.remove('hidden');
-            }
+            // Keep the main video container hidden since we use popup for video
+            // Keep chat messages visible at all times
         }
     }
 
@@ -1250,20 +1240,6 @@ class WebRTCChat {
     }
 
     handleVideoStatusUpdate(username, videoEnabled) {
-        const userElement = document.querySelector(`[data-user="${username}"]`);
-        if (userElement) {
-            const videoStatusElement = userElement.querySelector('.video-status');
-            if (videoStatusElement) {
-                const videoIcon = videoEnabled ? '📹' : '📷';
-                const videoTitle = videoEnabled ? 'Video On' : 'Video Off';
-                
-                videoStatusElement.textContent = videoIcon;
-                videoStatusElement.title = videoTitle;
-                
-                this.displaySystemMessage(`${username} ${videoEnabled ? 'enabled' : 'disabled'} their camera`);
-            }
-        }
-
         // Handle video popup based on explicit user video status changes
         if (!videoEnabled) {
             // User explicitly disabled video - remove from video chat
@@ -1291,17 +1267,7 @@ class WebRTCChat {
     }
 
     updateCurrentUserVideoStatus(videoEnabled) {
-        const currentUserElement = document.querySelector(`[data-user="${this.currentUser}"]`);
-        if (currentUserElement) {
-            const videoStatusElement = currentUserElement.querySelector('.video-status');
-            if (videoStatusElement) {
-                const videoIcon = videoEnabled ? '📹' : '📷';
-                const videoTitle = videoEnabled ? 'Video On' : 'Video Off';
-                
-                videoStatusElement.textContent = videoIcon;
-                videoStatusElement.title = videoTitle;
-            }
-        }
+        // Video status indicators removed from user list
     }
 
     showLoadingOverlay(message = 'Connecting...') {
@@ -1384,23 +1350,16 @@ class WebRTCChat {
                 this.videoBtn.innerHTML = '<span class="hidden sm:inline">Video On</span>';
                 this.displaySystemMessage('Camera enabled');
                 
-                // Show video container when video is enabled
-                if (this.videoContainer.classList.contains('hidden')) {
-                    this.videoContainer.classList.remove('hidden');
-                    this.messagesDiv.classList.add('hidden');
-                }
+                // Keep both video popup and chat messages visible
+                // Video will be shown in the floating popup, not the main container
             } else {
                 this.videoBtn.classList.remove('bg-green-500/80');
                 this.videoBtn.classList.add('bg-red-500/80');
                 this.videoBtn.innerHTML = '<span class="hidden sm:inline">Video Off</span>';
                 this.displaySystemMessage('Camera disabled');
                 
-                // Hide video container when video is disabled (unless there's remote video)
-                const hasRemoteVideo = this.remoteVideo.srcObject && this.remoteVideo.srcObject.getVideoTracks().length > 0;
-                if (!hasRemoteVideo && !this.videoContainer.classList.contains('hidden')) {
-                    this.videoContainer.classList.add('hidden');
-                    this.messagesDiv.classList.remove('hidden');
-                }
+                // Keep chat messages visible even when video is disabled
+                // The video popup will handle its own visibility
             }
             
             // Update current user's video status in the user list
@@ -1614,11 +1573,6 @@ class WebRTCChat {
     openVideoPopup() {
         if (!this.videoPopupModal) return;
 
-        // Set local video stream
-        if (this.popupLocalVideo && this.localStream) {
-            this.popupLocalVideo.srcObject = this.localStream;
-        }
-
         // Show the popup
         this.videoPopupModal.classList.remove('hidden');
         this.minimizedVideoIndicator.classList.add('hidden');
@@ -1659,11 +1613,6 @@ class WebRTCChat {
         // Show the popup
         this.videoPopupModal.classList.remove('hidden');
         this.minimizedVideoIndicator.classList.add('hidden');
-
-        // Restore local video stream
-        if (this.popupLocalVideo && this.localStream) {
-            this.popupLocalVideo.srcObject = this.localStream;
-        }
 
         // Restore main video if we have a current main user
         if (this.currentMainVideoUser && this.videoParticipants.has(this.currentMainVideoUser)) {
