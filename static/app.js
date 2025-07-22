@@ -10,6 +10,9 @@ class WebRTCChat {
         this.remoteVideoTracks = new Map(); // Track video tracks per user
         this.isScreenSharing = false;
         
+        // Track video status for each user
+        this.userVideoStatus = new Map(); // Track video enabled status per user
+        
         // Sound effects
         this.sounds = {
             mute: null,
@@ -67,10 +70,17 @@ class WebRTCChat {
         this.mainVideoUsername = document.getElementById('main-video-username');
         this.activeParticipantsCount = document.getElementById('active-participants-count');
         this.videoParticipantsContainer = document.getElementById('video-participants-container');
+        
+        // New enhanced video elements
+        this.mainVideoContainer = document.getElementById('main-video-container');
+        this.videoGridContainer = document.getElementById('video-grid-container');
+        this.participantsBar = document.getElementById('participants-bar');
+        this.noParticipantsMessage = document.getElementById('no-participants-message');
 
         // Video chat state
         this.videoParticipants = new Map(); // Track all video participants
         this.currentMainVideoUser = null; // Currently featured user
+        this.videoDisplayMode = 'grid'; // 'grid' or 'spotlight'
 
         // Mobile UI elements
         this.sidebar = document.getElementById('sidebar');
@@ -400,13 +410,16 @@ class WebRTCChat {
             });
             this.localVideo.srcObject = this.localStream;
             
-            // Disable video by default
+            // Disable video by default for privacy
             const videoTrack = this.localStream.getVideoTracks()[0];
             if (videoTrack) {
                 videoTrack.enabled = false; // Turn off video by default
                 this.videoBtn.classList.add('bg-red-500/80');
+                this.videoBtn.classList.remove('bg-green-500/80');
                 this.videoBtn.innerHTML = '<span class="hidden sm:inline">Video Off</span>';
-                this.localVideo.style.opacity = '0.3'; // Dim the local video to show it's off
+                this.localVideo.style.opacity = '0.3'; // Dim local video to show it's off
+                
+                // Don't add local user to video popup when video is disabled by default
             }
             
             // Keep video container hidden - we use the video popup for video display
@@ -542,6 +555,9 @@ class WebRTCChat {
         this.messagesDiv.innerHTML = '';
         this.usersList.innerHTML = '';
         
+        // Clear video status tracking for the new channel
+        this.userVideoStatus.clear();
+        
         this.sendWebSocketMessage({
             type: 'join_channel',
             username: this.currentUser,
@@ -553,7 +569,14 @@ class WebRTCChat {
             if (this.localStream) {
                 const videoTrack = this.localStream.getVideoTracks()[0];
                 if (videoTrack) {
+                    // Set our own video status first
+                    this.userVideoStatus.set(this.currentUser, videoTrack.enabled);
                     this.broadcastVideoStatus(videoTrack.enabled);
+                    
+                    // If video is enabled, add ourselves to the video popup
+                    if (videoTrack.enabled && this.currentUser) {
+                        this.addVideoParticipant(this.currentUser + ' (You)', this.localStream);
+                    }
                 }
             }
         }, 500); // Small delay to ensure other users have processed the join
@@ -670,9 +693,16 @@ class WebRTCChat {
             currentUserDiv.className = 'flex items-center space-x-2 p-2 bg-gradient-to-r from-white/10 to-gray-200/10 rounded border border-white/20 backdrop-blur-sm';
             currentUserDiv.dataset.user = this.currentUser;
             
+            // Check current user's video status
+            const hasVideo = this.localStream && this.localStream.getVideoTracks().length > 0 && this.localStream.getVideoTracks()[0].enabled;
+            const videoIcon = hasVideo ? 
+                '<svg class="w-3 h-3 text-green-400" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h6l2 2h6a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14 8a2 2 0 11-4 0 2 2 0 014 0z"/></svg>' :
+                '<svg class="w-3 h-3 text-gray-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3.28 2.22a.75.75 0 00-1.06 1.06l14.5 14.5a.75.75 0 101.06-1.06l-1.745-1.745a10.029 10.029 0 003.3-4.38 1.651 1.651 0 000-1.185A10.004 10.004 0 009.999 3a9.956 9.956 0 00-4.744 1.194L3.28 2.22zM7.752 6.69l1.092 1.092a2.5 2.5 0 013.374 3.373l1.091 1.092a4 4 0 00-5.557-5.557z" clip-rule="evenodd"/><path d="m10.748 13.93 2.523 2.523a9.987 9.987 0 01-3.27.547c-4.258 0-7.894-2.66-9.337-6.41a1.651 1.651 0 010-1.186A10.007 10.007 0 012.839 6.02L6.07 9.252a4 4 0 004.678 4.678z"/></svg>';
+            
             currentUserDiv.innerHTML = `
                 <div class="w-2 h-2 bg-white rounded-full animate-pulse"></div>
                 <span class="font-semibold text-white">${this.currentUser} (You)</span>
+                <div class="ml-auto">${videoIcon}</div>
             `;
             this.usersList.appendChild(currentUserDiv);
         }
@@ -683,9 +713,17 @@ class WebRTCChat {
                 const userDiv = document.createElement('div');
                 userDiv.className = 'flex items-center space-x-2 p-2 bg-gray-700 rounded';
                 userDiv.dataset.user = username;
+                
+                // Check if user has video enabled
+                const hasVideo = this.userVideoStatus.get(username) === true;
+                const videoIcon = hasVideo ? 
+                    '<svg class="w-3 h-3 text-green-400" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h6l2 2h6a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14 8a2 2 0 11-4 0 2 2 0 014 0z"/></svg>' :
+                    '<svg class="w-3 h-3 text-gray-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3.28 2.22a.75.75 0 00-1.06 1.06l14.5 14.5a.75.75 0 101.06-1.06l-1.745-1.745a10.029 10.029 0 003.3-4.38 1.651 1.651 0 000-1.185A10.004 10.004 0 009.999 3a9.956 9.956 0 00-4.744 1.194L3.28 2.22zM7.752 6.69l1.092 1.092a2.5 2.5 0 013.374 3.373l1.091 1.092a4 4 0 00-5.557-5.557z" clip-rule="evenodd"/><path d="m10.748 13.93 2.523 2.523a9.987 9.987 0 01-3.27.547c-4.258 0-7.894-2.66-9.337-6.41a1.651 1.651 0 010-1.186A10.007 10.007 0 012.839 6.02L6.07 9.252a4 4 0 004.678 4.678z"/></svg>';
+                
                 userDiv.innerHTML = `
                     <div class="w-2 h-2 bg-green-500 rounded-full"></div>
                     <span>${username}</span>
+                    <div class="ml-auto">${videoIcon}</div>
                 `;
                 this.usersList.appendChild(userDiv);
                 // Initiate connection to existing users
@@ -703,9 +741,17 @@ class WebRTCChat {
         const userDiv = document.createElement('div');
         userDiv.className = 'flex items-center space-x-2 p-2 bg-gray-700 rounded';
         userDiv.dataset.user = username;
+        
+        // Check if user has video enabled
+        const hasVideo = this.userVideoStatus.get(username) === true;
+        const videoIcon = hasVideo ? 
+            '<svg class="w-3 h-3 text-green-400" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h6l2 2h6a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14 8a2 2 0 11-4 0 2 2 0 014 0z"/></svg>' :
+            '<svg class="w-3 h-3 text-gray-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3.28 2.22a.75.75 0 00-1.06 1.06l14.5 14.5a.75.75 0 101.06-1.06l-1.745-1.745a10.029 10.029 0 003.3-4.38 1.651 1.651 0 000-1.185A10.004 10.004 0 009.999 3a9.956 9.956 0 00-4.744 1.194L3.28 2.22zM7.752 6.69l1.092 1.092a2.5 2.5 0 013.374 3.373l1.091 1.092a4 4 0 00-5.557-5.557z" clip-rule="evenodd"/><path d="m10.748 13.93 2.523 2.523a9.987 9.987 0 01-3.27.547c-4.258 0-7.894-2.66-9.337-6.41a1.651 1.651 0 010-1.186A10.007 10.007 0 012.839 6.02L6.07 9.252a4 4 0 004.678 4.678z"/></svg>';
+        
         userDiv.innerHTML = `
             <div class="w-2 h-2 bg-green-500 rounded-full"></div>
             <span>${username}</span>
+            <div class="ml-auto">${videoIcon}</div>
         `;
         this.usersList.appendChild(userDiv);
         
@@ -718,6 +764,9 @@ class WebRTCChat {
         if (userDiv) {
             userDiv.remove();
         }
+        
+        // Clean up video status tracking for this user
+        this.userVideoStatus.delete(username);
         
         // Update user count
         this.updateUserCountFromList();
@@ -820,9 +869,21 @@ class WebRTCChat {
                 }
                 this.remoteVideoTracks.set(username, track);
                 
-                // Show video in popup modal only if track is enabled
-                if (track.enabled && track.readyState === 'live') {
+                // Check if user has video enabled before showing popup
+                const userVideoEnabled = this.userVideoStatus.get(username);
+                if (track.enabled && track.readyState === 'live' && userVideoEnabled !== false) {
+                    // Show video popup if track is live and user hasn't explicitly disabled video
                     this.showVideoPopup(stream, username);
+                } else {
+                    console.log(`Video track received for ${username} but not showing popup. Track enabled: ${track.enabled}, Track state: ${track.readyState}, User video enabled: ${userVideoEnabled}`);
+                }
+                
+                // If user video status is unknown, check if we should show the popup
+                if (userVideoEnabled === undefined) {
+                    // Give it a moment for the video status message to arrive, then check again
+                    setTimeout(() => {
+                        this.checkVideoTrackAndStatus(username);
+                    }, 1000);
                 }
                 
                 // Monitor track state
@@ -911,7 +972,10 @@ class WebRTCChat {
                 if (this.localStream) {
                     const videoTrack = this.localStream.getVideoTracks()[0];
                     if (videoTrack) {
-                        this.broadcastVideoStatus(videoTrack.enabled);
+                        // Small delay to ensure the peer connection is established
+                        setTimeout(() => {
+                            this.broadcastVideoStatus(videoTrack.enabled);
+                        }, 1000);
                     }
                 }
             })
@@ -1009,6 +1073,16 @@ class WebRTCChat {
                           });
                           delete pc.iceCandidateQueue;
                       }
+                      
+                      // Broadcast video status after connection is established
+                      setTimeout(() => {
+                          if (this.localStream) {
+                              const videoTrack = this.localStream.getVideoTracks()[0];
+                              if (videoTrack) {
+                                  this.broadcastVideoStatus(videoTrack.enabled);
+                              }
+                          }
+                      }, 500);
                   })
                   .catch(e => console.error('Error handling answer:', e));
             } else {
@@ -1215,6 +1289,18 @@ class WebRTCChat {
                 this.displaySystemMessage(`${username} unmuted their microphone`);
             }
         }
+        
+        // Update audio indicator in video participant
+        const audioIndicator = document.getElementById(`audio-indicator-${username.replace(/[^a-zA-Z0-9]/g, '_')}`);
+        if (audioIndicator) {
+            if (isMuted) {
+                audioIndicator.className = 'w-2 h-2 bg-red-500 rounded-full border border-white';
+                audioIndicator.title = 'Audio muted';
+            } else {
+                audioIndicator.className = 'w-2 h-2 bg-green-500 rounded-full border border-white';
+                audioIndicator.title = 'Audio enabled';
+            }
+        }
     }
 
     updateParticipantStatus(username, status) {
@@ -1240,20 +1326,49 @@ class WebRTCChat {
     }
 
     handleVideoStatusUpdate(username, videoEnabled) {
+        // Update the user's video status in our tracking map
+        this.userVideoStatus.set(username, videoEnabled);
+        
+        // Update the video icon in the user list
+        this.updateUserVideoIndicator(username, videoEnabled);
+        
+        console.log(`Video status update for ${username}: ${videoEnabled}`);
+        
         // Handle video popup based on explicit user video status changes
         if (!videoEnabled) {
             // User explicitly disabled video - remove from video chat
             this.removeVideoParticipant(username);
             console.log(`Removed ${username} from video chat due to disabled video`);
         } else {
-            // User explicitly enabled video - add to video chat if we have their video track
+            // User explicitly enabled video - check if we have their video track and show popup
             const videoTrack = this.remoteVideoTracks ? this.remoteVideoTracks.get(username) : null;
             if (videoTrack && videoTrack.readyState === 'live') {
                 // Create a stream with the video track and add participant
                 const stream = new MediaStream([videoTrack]);
                 this.showVideoPopup(stream, username);
                 console.log(`Added ${username} to video chat due to enabled video`);
+            } else {
+                console.log(`Video enabled for ${username} but no live video track available yet. Track:`, videoTrack);
+                // Check again in a moment in case the video track arrives later
+                setTimeout(() => {
+                    this.checkVideoTrackAndStatus(username);
+                }, 1000);
             }
+        }
+    }
+
+    checkVideoTrackAndStatus(username) {
+        // Helper function to check if both video track and video status are available
+        const videoTrack = this.remoteVideoTracks ? this.remoteVideoTracks.get(username) : null;
+        const userVideoEnabled = this.userVideoStatus.get(username);
+        
+        console.log(`Checking video track and status for ${username}. Track:`, videoTrack ? 'exists' : 'none', 'Status:', userVideoEnabled);
+        
+        if (videoTrack && videoTrack.readyState === 'live' && userVideoEnabled === true) {
+            // Both conditions met - show video popup
+            const stream = new MediaStream([videoTrack]);
+            this.showVideoPopup(stream, username);
+            console.log(`Auto-showing video popup for ${username} after delayed check`);
         }
     }
 
@@ -1267,7 +1382,25 @@ class WebRTCChat {
     }
 
     updateCurrentUserVideoStatus(videoEnabled) {
-        // Video status indicators removed from user list
+        // Update current user's video status
+        if (this.currentUser) {
+            this.userVideoStatus.set(this.currentUser, videoEnabled);
+            this.updateUserVideoIndicator(this.currentUser, videoEnabled);
+        }
+    }
+
+    updateUserVideoIndicator(username, videoEnabled) {
+        const userDiv = document.querySelector(`[data-user="${username}"]`);
+        if (userDiv) {
+            // Find the video icon container (should be the last child)
+            const videoIconContainer = userDiv.querySelector('.ml-auto');
+            if (videoIconContainer) {
+                const videoIcon = videoEnabled ? 
+                    '<svg class="w-3 h-3 text-green-400" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h6l2 2h6a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14 8a2 2 0 11-4 0 2 2 0 014 0z"/></svg>' :
+                    '<svg class="w-3 h-3 text-gray-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3.28 2.22a.75.75 0 00-1.06 1.06l14.5 14.5a.75.75 0 101.06-1.06l-1.745-1.745a10.029 10.029 0 003.3-4.38 1.651 1.651 0 000-1.185A10.004 10.004 0 009.999 3a9.956 9.956 0 00-4.744 1.194L3.28 2.22zM7.752 6.69l1.092 1.092a2.5 2.5 0 013.374 3.373l1.091 1.092a4 4 0 00-5.557-5.557z" clip-rule="evenodd"/><path d="m10.748 13.93 2.523 2.523a9.987 9.987 0 01-3.27.547c-4.258 0-7.894-2.66-9.337-6.41a1.651 1.651 0 010-1.186A10.007 10.007 0 012.839 6.02L6.07 9.252a4 4 0 004.678 4.678z"/></svg>';
+                videoIconContainer.innerHTML = videoIcon;
+            }
+        }
     }
 
     showLoadingOverlay(message = 'Connecting...') {
@@ -1350,17 +1483,49 @@ class WebRTCChat {
                 this.videoBtn.innerHTML = '<span class="hidden sm:inline">Video On</span>';
                 this.displaySystemMessage('Camera enabled');
                 
-                // Keep both video popup and chat messages visible
-                // Video will be shown in the floating popup, not the main container
+                // Add local user to video popup when they enable video
+                if (this.currentUser) {
+                    this.addVideoParticipant(this.currentUser + ' (You)', this.localStream);
+                    this.openVideoPopup();
+                }
             } else {
                 this.videoBtn.classList.remove('bg-green-500/80');
                 this.videoBtn.classList.add('bg-red-500/80');
                 this.videoBtn.innerHTML = '<span class="hidden sm:inline">Video Off</span>';
                 this.displaySystemMessage('Camera disabled');
                 
-                // Keep chat messages visible even when video is disabled
-                // The video popup will handle its own visibility
+                // Remove local user from video popup when they disable video
+                if (this.currentUser) {
+                    this.removeVideoParticipant(this.currentUser + ' (You)');
+                }
             }
+            
+            // Update all existing peer connections with the new video track state
+            this.peerConnections.forEach(async (pc, username) => {
+                try {
+                    const sender = pc.getSenders().find(s => 
+                        s.track && s.track.kind === 'video'
+                    );
+                    
+                    if (sender) {
+                        if (videoTrack.enabled) {
+                            // Replace with the enabled video track
+                            await sender.replaceTrack(videoTrack);
+                            console.log(`Updated video track for ${username} - enabled`);
+                        } else {
+                            // Keep the track but it will be disabled
+                            await sender.replaceTrack(videoTrack);
+                            console.log(`Updated video track for ${username} - disabled`);
+                        }
+                    } else if (videoTrack.enabled) {
+                        // Add video track if it wasn't there before
+                        pc.addTrack(videoTrack, this.localStream);
+                        console.log(`Added video track for ${username}`);
+                    }
+                } catch (error) {
+                    console.error(`Error updating video track for ${username}:`, error);
+                }
+            });
             
             // Update current user's video status in the user list
             this.updateCurrentUserVideoStatus(videoTrack.enabled);
@@ -1393,17 +1558,11 @@ class WebRTCChat {
 
         console.log(`Adding video participant: ${remoteUsername}`);
 
-        // Add participant to the video chat
+        // Add participant to the video chat - this will auto-open the popup
         this.addVideoParticipant(remoteUsername, remoteStream);
 
-        // If popup is hidden, show minimized indicator instead of auto-opening
-        if (this.videoPopupModal.classList.contains('hidden')) {
-            this.minimizedVideoIndicator.classList.remove('hidden');
-            console.log('Video popup is minimized, showing indicator');
-        } else {
-            // Update participant count if popup is visible
-            this.updateParticipantCount();
-        }
+        // Show system message about the new video participant
+        this.displaySystemMessage(`${remoteUsername} joined video chat`);
 
         console.log(`Video participant ${remoteUsername} added`);
     }
@@ -1415,17 +1574,185 @@ class WebRTCChat {
             videoElement: null
         });
 
-        // If no main video user is set, make this user the main video
-        if (!this.currentMainVideoUser) {
-            this.setMainVideoUser(username, stream);
+        // Create participant video element
+        this.createVideoParticipant(username, stream);
+        
+        // Auto-open video popup when someone joins video chat (Discord-like behavior)
+        if (this.videoPopupModal.classList.contains('hidden')) {
+            this.openVideoPopup();
+        }
+        
+        // Update display layout based on participant count
+        this.updateVideoLayout();
+        
+        // Update participant count
+        this.updateParticipantCount();
+    }
+
+    createVideoParticipant(username, stream) {
+        // Remove existing participant if exists
+        this.removeVideoParticipantElement(username);
+
+        // Create participant container
+        const participantContainer = document.createElement('div');
+        participantContainer.className = 'relative bg-gray-800 rounded-lg overflow-hidden shadow-lg border border-white/10';
+        participantContainer.id = `video-participant-${username.replace(/[^a-zA-Z0-9]/g, '_')}`;
+
+        // Create video element
+        const video = document.createElement('video');
+        video.autoplay = true;
+        video.playsInline = true;
+        video.muted = username.includes('(You)'); // Mute local video to prevent feedback
+        video.srcObject = stream;
+        video.className = 'w-full h-full object-cover bg-black';
+
+        // Create overlay with username and status
+        const overlay = document.createElement('div');
+        overlay.className = 'absolute inset-0 pointer-events-none';
+        
+        // Username label
+        const usernameLabel = document.createElement('div');
+        usernameLabel.className = 'absolute bottom-2 left-2 bg-black/80 text-white px-2 py-1 rounded text-xs font-medium';
+        usernameLabel.textContent = username;
+
+        // Status indicators
+        const statusContainer = document.createElement('div');
+        statusContainer.className = 'absolute top-2 right-2 flex space-x-1';
+
+        // Video status indicator
+        const videoIndicator = document.createElement('div');
+        videoIndicator.className = 'w-2 h-2 bg-green-500 rounded-full border border-white';
+        videoIndicator.title = 'Video enabled';
+
+        // Audio status indicator (will be updated based on mute status)
+        const audioIndicator = document.createElement('div');
+        audioIndicator.className = 'w-2 h-2 bg-green-500 rounded-full border border-white';
+        audioIndicator.title = 'Audio enabled';
+        audioIndicator.id = `audio-indicator-${username.replace(/[^a-zA-Z0-9]/g, '_')}`;
+
+        statusContainer.appendChild(videoIndicator);
+        statusContainer.appendChild(audioIndicator);
+        
+        overlay.appendChild(usernameLabel);
+        overlay.appendChild(statusContainer);
+
+        // Assemble participant
+        participantContainer.appendChild(video);
+        participantContainer.appendChild(overlay);
+
+        // Store video element reference
+        this.videoParticipants.get(username).videoElement = video;
+
+        // Add click handler for spotlight mode
+        participantContainer.addEventListener('click', () => {
+            this.setSpotlightUser(username);
+        });
+
+        // Add to grid container
+        this.videoGridContainer.appendChild(participantContainer);
+
+        console.log(`Added video participant: ${username}`);
+    }
+
+    removeVideoParticipantElement(username) {
+        const participantElement = document.getElementById(`video-participant-${username.replace(/[^a-zA-Z0-9]/g, '_')}`);
+        if (participantElement) {
+            participantElement.remove();
+        }
+    }
+
+    updateVideoLayout() {
+        const participantCount = this.videoParticipants.size;
+        
+        if (participantCount === 0) {
+            this.videoGridContainer.className = 'grid gap-2 mb-3 hidden';
+            this.mainVideoContainer.classList.add('hidden');
+            if (this.noParticipantsMessage) {
+                this.noParticipantsMessage.classList.remove('hidden');
+            }
+            return;
         }
 
-        // Create participant preview
-        this.createParticipantPreview(username, stream);
+        // Hide no participants message
+        if (this.noParticipantsMessage) {
+            this.noParticipantsMessage.classList.add('hidden');
+        }
 
-        // If this is the first participant and popup is hidden, auto-open it
-        if (this.videoParticipants.size === 1 && this.videoPopupModal.classList.contains('hidden')) {
-            this.openVideoPopup();
+        this.videoGridContainer.classList.remove('hidden');
+
+        // Determine grid layout based on participant count
+        let gridClass = 'grid gap-2 mb-3 ';
+        
+        if (participantCount === 1) {
+            gridClass += 'grid-cols-1';
+            // Single participant - larger video
+            this.videoGridContainer.style.minHeight = '200px';
+        } else if (participantCount === 2) {
+            gridClass += 'grid-cols-2';
+            this.videoGridContainer.style.minHeight = '150px';
+        } else if (participantCount <= 4) {
+            gridClass += 'grid-cols-2';
+            this.videoGridContainer.style.minHeight = '200px';
+        } else if (participantCount <= 6) {
+            gridClass += 'grid-cols-3';
+            this.videoGridContainer.style.minHeight = '180px';
+        } else if (participantCount <= 9) {
+            gridClass += 'grid-cols-3';
+            this.videoGridContainer.style.minHeight = '240px';
+        } else {
+            gridClass += 'grid-cols-4';
+            this.videoGridContainer.style.minHeight = '200px';
+        }
+
+        this.videoGridContainer.className = gridClass;
+
+        // Hide main video container in grid mode (unless spotlight is active)
+        if (this.currentMainVideoUser) {
+            this.mainVideoContainer.classList.remove('hidden');
+        } else {
+            this.mainVideoContainer.classList.add('hidden');
+        }
+
+        console.log(`Updated video layout for ${participantCount} participants`);
+    }
+
+    setSpotlightUser(username) {
+        const participant = this.videoParticipants.get(username);
+        if (!participant || !participant.stream) return;
+
+        this.currentMainVideoUser = username;
+        
+        // Show main video container
+        this.mainVideoContainer.classList.remove('hidden');
+        
+        // Set main video stream
+        if (this.popupMainVideo) {
+            this.popupMainVideo.srcObject = participant.stream;
+            this.popupMainVideo.muted = username.includes('(You)');
+        }
+
+        // Update main video username
+        if (this.mainVideoUsername) {
+            this.mainVideoUsername.textContent = username;
+        }
+
+        // Switch to grid layout but highlight the spotlight user
+        this.updateVideoLayout();
+        this.highlightSpotlightUser(username);
+
+        console.log(`Set spotlight user: ${username}`);
+    }
+
+    highlightSpotlightUser(username) {
+        // Remove highlight from all participants
+        document.querySelectorAll('[id^="video-participant-"]').forEach(element => {
+            element.classList.remove('ring-2', 'ring-blue-500');
+        });
+
+        // Highlight current spotlight user
+        const spotlightElement = document.getElementById(`video-participant-${username.replace(/[^a-zA-Z0-9]/g, '_')}`);
+        if (spotlightElement) {
+            spotlightElement.classList.add('ring-2', 'ring-blue-500');
         }
     }
 
@@ -1447,7 +1774,8 @@ class WebRTCChat {
         const video = document.createElement('video');
         video.autoplay = true;
         video.playsInline = true;
-        video.muted = false;
+        // Mute local video to prevent feedback, but not remote videos
+        video.muted = username.includes('(You)');
         video.srcObject = stream;
         video.className = 'w-16 h-12 object-cover rounded border border-white/30 shadow-sm bg-black';
 
@@ -1478,6 +1806,8 @@ class WebRTCChat {
         // Update main video
         if (this.popupMainVideo && stream) {
             this.popupMainVideo.srcObject = stream;
+            // Mute main video if it's the local user to prevent feedback
+            this.popupMainVideo.muted = username.includes('(You)');
         }
 
         // Update main video username label
@@ -1518,36 +1848,31 @@ class WebRTCChat {
         // Remove from participants map
         this.videoParticipants.delete(username);
 
-        // Remove preview element
-        const previewElement = document.getElementById(`participant-${username}`);
-        if (previewElement) {
-            previewElement.remove();
-        }
+        // Remove participant element from grid
+        this.removeVideoParticipantElement(username);
 
-        // If this was the main video user, switch to another participant
+        // If this was the spotlight user, clear spotlight
         if (this.currentMainVideoUser === username) {
-            const remainingParticipants = Array.from(this.videoParticipants.keys());
-            if (remainingParticipants.length > 0) {
-                const nextUser = remainingParticipants[0];
-                const nextStream = this.videoParticipants.get(nextUser).stream;
-                this.setMainVideoUser(nextUser, nextStream);
-            } else {
-                // No more participants, close popup completely
-                this.currentMainVideoUser = null;
-                if (this.popupMainVideo) {
-                    this.popupMainVideo.srcObject = null;
-                }
-                this.videoPopupModal.classList.add('hidden');
-                this.minimizedVideoIndicator.classList.add('hidden');
-                console.log('All video participants removed, popup closed');
-                return;
+            this.currentMainVideoUser = null;
+            this.mainVideoContainer.classList.add('hidden');
+            if (this.popupMainVideo) {
+                this.popupMainVideo.srcObject = null;
             }
         }
+
+        // Update video layout
+        this.updateVideoLayout();
 
         // Update participant count
         this.updateParticipantCount();
 
-        console.log(`Video participant ${username} removed`);
+        // Close popup if no participants left
+        if (this.videoParticipants.size === 0) {
+            this.closeVideoPopupModal();
+            console.log('All video participants removed, popup closed');
+        }
+
+        console.log(`Removed video participant: ${username}`);
     }
 
     updateParticipantCount() {
@@ -1572,6 +1897,13 @@ class WebRTCChat {
 
     openVideoPopup() {
         if (!this.videoPopupModal) return;
+
+        // Reset position to default if it was moved
+        this.videoPopupModal.style.position = 'fixed';
+        this.videoPopupModal.style.left = '';
+        this.videoPopupModal.style.top = '';
+        this.videoPopupModal.style.right = '16px';
+        this.videoPopupModal.style.bottom = '80px';
 
         // Show the popup
         this.videoPopupModal.classList.remove('hidden');
@@ -1681,9 +2013,14 @@ class WebRTCChat {
             startLeft = rect.left;
             startTop = rect.top;
             
+            // Prevent hover effects during drag
+            this.videoPopupModal.style.pointerEvents = 'auto';
+            this.videoPopupModal.style.transition = 'none';
+            
             document.addEventListener('mousemove', onMouseMove);
             document.addEventListener('mouseup', onMouseUp);
             e.preventDefault();
+            e.stopPropagation();
         };
 
         const onMouseMove = (e) => {
@@ -1696,30 +2033,73 @@ class WebRTCChat {
             let newTop = startTop + deltaY;
             
             // Keep popup within viewport bounds
-            const rect = this.videoPopupModal.getBoundingClientRect();
-            const maxLeft = window.innerWidth - rect.width;
-            const maxTop = window.innerHeight - rect.height;
+            const popupWidth = this.videoPopupModal.offsetWidth;
+            const popupHeight = this.videoPopupModal.offsetHeight;
+            const maxLeft = window.innerWidth - popupWidth;
+            const maxTop = window.innerHeight - popupHeight;
             
             newLeft = Math.max(0, Math.min(newLeft, maxLeft));
             newTop = Math.max(0, Math.min(newTop, maxTop));
             
+            this.videoPopupModal.style.position = 'fixed';
             this.videoPopupModal.style.left = newLeft + 'px';
             this.videoPopupModal.style.top = newTop + 'px';
             this.videoPopupModal.style.right = 'auto';
             this.videoPopupModal.style.bottom = 'auto';
+            
+            e.preventDefault();
         };
 
-        const onMouseUp = () => {
+        const onMouseUp = (e) => {
             if (!isDragging) return;
             
             isDragging = false;
             this.videoPopupModal.classList.remove('dragging');
             
+            // Restore transitions and hover effects
+            this.videoPopupModal.style.transition = 'all 0.3s ease';
+            
             document.removeEventListener('mousemove', onMouseMove);
             document.removeEventListener('mouseup', onMouseUp);
+            
+            e.preventDefault();
         };
 
+        // Add event listeners
         this.videoPopupModal.addEventListener('mousedown', onMouseDown);
+        
+        // Also handle touch events for mobile
+        this.videoPopupModal.addEventListener('touchstart', (e) => {
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent('mousedown', {
+                clientX: touch.clientX,
+                clientY: touch.clientY,
+                bubbles: true,
+                cancelable: true
+            });
+            onMouseDown(mouseEvent);
+        });
+        
+        document.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent('mousemove', {
+                clientX: touch.clientX,
+                clientY: touch.clientY,
+                bubbles: true,
+                cancelable: true
+            });
+            onMouseMove(mouseEvent);
+        });
+        
+        document.addEventListener('touchend', (e) => {
+            if (!isDragging) return;
+            const mouseEvent = new MouseEvent('mouseup', {
+                bubbles: true,
+                cancelable: true
+            });
+            onMouseUp(mouseEvent);
+        });
     }
 
     async toggleScreenShare() {

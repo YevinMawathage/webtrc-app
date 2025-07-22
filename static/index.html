@@ -625,6 +625,8 @@
             transition: all 0.3s ease;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
             backdrop-filter: blur(10px);
+            position: fixed !important;
+            z-index: 1000;
         }
 
         #video-popup-modal:hover {
@@ -632,11 +634,17 @@
             box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
         }
 
+        /* Disable hover transform when dragging */
+        #video-popup-modal.dragging:hover {
+            transform: none;
+        }
+
         /* Ensure video popup stays on top but doesn't block interactions */
         #video-popup-modal.dragging {
             cursor: move;
             user-select: none;
             -webkit-user-select: none;
+            transition: none !important;
         }
 
         /* Make video popup header draggable */
@@ -648,6 +656,22 @@
 
         #video-popup-modal .flex.items-center.justify-between.p-3.border-b:hover {
             background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* Ensure video elements load properly */
+        #video-popup-modal video {
+            background-color: #000;
+            border-radius: 8px;
+        }
+
+        /* Participant preview hover effects */
+        .video-participant-preview:hover {
+            transform: scale(1.05);
+            transition: transform 0.2s ease;
+        }
+
+        .video-participant-preview video {
+            transition: border-color 0.2s ease;
         }
         /* Modern animated background */
         .animated-background {
@@ -1717,14 +1741,14 @@
     <div id="remote-media-container"></div>
 
     <!-- Video Popup Modal -->
-    <div id="video-popup-modal" class="fixed bottom-20 right-4 z-50 hidden w-96 max-w-sm bg-gradient-to-t from-gray-900 to-gray-800 border border-white/20 rounded-xl shadow-2xl">
+    <div id="video-popup-modal" class="fixed bottom-20 right-4 z-50 hidden w-[600px] max-w-[90vw] bg-gradient-to-t from-gray-900 to-gray-800 border border-white/20 rounded-xl shadow-2xl resize overflow-auto">
             <!-- Header -->
-            <div class="flex items-center justify-between p-3 border-b border-white/10">
+            <div class="flex items-center justify-between p-3 border-b border-white/10 cursor-move">
                 <div class="flex items-center space-x-2">
                     <svg class="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 24 24" title="Drag to move">
                         <path d="M9 5h2v2H9V5zm0 3h2v2H9V8zm0 3h2v2H9v-2zm0 3h2v2H9v-2zm0 3h2v2H9v-2zm3-12h2v2h-2V5zm0 3h2v2h-2V8zm0 3h2v2h-2v-2zm0 3h2v2h-2v-2zm0 3h2v2h-2v-2z"></path>
                     </svg>
-                    <h3 id="video-popup-title" class="text-sm font-semibold text-white">Video Chat - <span id="active-participants-count">1</span> participant(s)</h3>
+                    <h3 id="video-popup-title" class="text-sm font-semibold text-white">Video Chat - <span id="active-participants-count">0</span> participant(s)</h3>
                 </div>
                 <div class="flex items-center space-x-1">
                     <button id="minimize-video" class="p-1.5 hover:bg-white/10 rounded-lg transition-colors" title="Minimize">
@@ -1741,21 +1765,26 @@
             </div>
             
             <!-- Video Content -->
-            <div class="relative p-3">
-                <!-- Main Video Area (Host/Speaker) -->
-                <div class="relative w-full h-48 mb-3">
+            <div class="relative p-3 max-h-[70vh] overflow-y-auto">
+                <!-- Main Video Area (Spotlight mode) -->
+                <div id="main-video-container" class="relative w-full h-64 mb-3 hidden">
                     <video id="popup-main-video" autoplay playsinline class="w-full h-full object-cover rounded-lg bg-black"></video>
-                    <div class="absolute bottom-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
-                        <span id="main-video-username">Host</span>
+                    <div class="absolute bottom-2 left-2 bg-black/80 text-white px-2 py-1 rounded text-xs font-medium">
+                        <span id="main-video-username">Spotlight</span>
+                    </div>
+                    <div class="absolute top-2 right-2 bg-black/60 text-white px-2 py-1 rounded text-xs">
+                        Click any participant below to change spotlight
                     </div>
                 </div>
                 
-                <!-- Participant Previews (Discord-style bottom bar) -->
-                <div class="flex items-center space-x-2">
-                    <!-- Remote participants container -->
-                    <div id="video-participants-container" class="flex space-x-2 overflow-x-auto custom-scroll flex-1">
-                        <!-- Remote participants will be added here dynamically -->
-                    </div>
+                <!-- Grid View for Multiple Participants (Discord-style) -->
+                <div id="video-grid-container" class="grid gap-2 mb-3">
+                    <!-- Participants will be added here in grid format -->
+                </div>
+                
+                <!-- Info text when no participants -->
+                <div id="no-participants-message" class="text-center text-gray-400 py-8 text-sm">
+                    No video participants yet. Enable your camera to start video chat!
                 </div>
             </div>
         </div>
