@@ -2,14 +2,12 @@ class WebRTCChat {
     constructor() {
         this.ws = null;
         this.localStream = null;
-        this.audioContext = null;
-        this.mediaRecorder = null;
         this.currentUser = null;
         this.currentChannel = 'general';
         this.isMuted = false;
         this.isLoggedIn = false;
-        this.isRecording = false;
-        this.audioPlayers = new Map(); // Map<username, {context, nextStartTime, bufferQueue}>
+        this.peerConnections = new Map();
+        this.isScreenSharing = false;
         
         // Sound effects
         this.sounds = {
@@ -21,6 +19,7 @@ class WebRTCChat {
         this.initUI();
         this.setupEventListeners();
         this.initSounds();
+        this.initScreenSharing(); // Initialize screen sharing features
         this.checkExistingSession(); // Check for existing session on load
     }
 
@@ -48,12 +47,43 @@ class WebRTCChat {
         this.usersList = document.getElementById('users-list');
         this.channelsList = document.getElementById('channels-list');
         this.remoteAudioContainer = document.getElementById('remote-audio-container');
+        this.userCountSpan = document.getElementById('user-count');
         
+        // Video elements
+        this.videoContainer = document.getElementById('video-container');
+        this.localVideo = document.getElementById('local-video');
+        this.remoteVideo = document.getElementById('remote-video');
+        this.videoBtn = document.getElementById('video-btn');
+        this.screenShareBtn = document.getElementById('screen-share-btn');
+
         // Mobile UI elements
         this.sidebar = document.getElementById('sidebar');
         this.mobileMenuBtn = document.getElementById('mobile-menu-btn');
         this.closeSidebarBtn = document.getElementById('close-sidebar');
         this.mobileOverlay = document.getElementById('mobile-overlay');
+
+        // Initialize button states
+        this.initializeButtonStates();
+    }
+
+    initializeButtonStates() {
+        // Initialize mute button
+        if (this.muteBtn) {
+            this.muteBtn.classList.add('bg-green-500/80');
+            this.muteBtn.innerHTML = '<span class="hidden sm:inline">Mute</span>';
+        }
+
+        // Initialize video button  
+        if (this.videoBtn) {
+            this.videoBtn.classList.add('bg-gray-700/80');
+            this.videoBtn.innerHTML = '<span class="hidden sm:inline">Video</span>';
+        }
+
+        // Initialize screen share button
+        if (this.screenShareBtn) {
+            this.screenShareBtn.classList.add('bg-gray-700/80');
+            this.screenShareBtn.innerHTML = '<span class="hidden sm:inline">Share</span>';
+        }
     }
 
     initSounds() {
@@ -71,6 +101,31 @@ class WebRTCChat {
             unmute: { frequency: 400, duration: 0.15, type: 'ascending' },
             disconnect: { frequency: 600, duration: 0.3, type: 'declining' }
         };
+    }
+
+    async initScreenSharing() {
+        // Check if screen sharing is supported
+        if (!this.isScreenSharingSupported()) {
+            console.log('Screen sharing not supported in this browser');
+            if (this.screenShareBtn) {
+                this.screenShareBtn.disabled = true;
+                this.screenShareBtn.title = 'Screen sharing not supported in this browser';
+                this.screenShareBtn.innerHTML = '<span class="text-sm opacity-50">N/A</span><span class="hidden sm:inline opacity-50">N/A</span>';
+            }
+            return;
+        }
+
+        // Get and log capabilities
+        try {
+            const capabilities = await this.getScreenSharingCapabilities();
+            console.log('Screen sharing capabilities:', capabilities);
+            
+            if (this.screenShareBtn) {
+                this.screenShareBtn.title = 'Share your screen with other participants';
+            }
+        } catch (error) {
+            console.error('Error checking screen sharing capabilities:', error);
+        }
     }
 
     async playSound(soundName) {
@@ -125,7 +180,7 @@ class WebRTCChat {
         } catch (error) {
             console.log('Sound play error:', error);
             // Fallback to a simple console notification for development
-            console.log(`🔊 ${soundName} sound played`);
+            console.log(`Sound ${soundName} played`);
         }
     }
 
@@ -154,10 +209,19 @@ class WebRTCChat {
         });
         this.muteBtn.addEventListener('click', () => this.toggleMute());
         this.disconnectBtn.addEventListener('click', () => this.disconnect());
+        this.videoBtn.addEventListener('click', () => this.toggleVideo());
+        this.screenShareBtn.addEventListener('click', () => {
+            if (this.isScreenSharing) {
+                this.toggleScreenShare();
+            } else {
+                this.startScreenShareWithFeedback();
+            }
+        });
         
         this.channelsList.addEventListener('click', (e) => {
-            if (e.target.classList.contains('channel-item')) {
-                const channel = e.target.dataset.channel;
+            const channelItem = e.target.closest('.channel-item');
+            if (channelItem) {
+                const channel = channelItem.dataset.channel;
                 this.joinChannel(channel);
             }
         });
@@ -295,13 +359,49 @@ class WebRTCChat {
     }
 
     async initializeChat() {
+        this.showLoadingOverlay('Initializing audio and video...');
+        
         try {
             this.localStream = await navigator.mediaDevices.getUserMedia({ 
                 audio: true, 
-                video: false 
+                video: true 
             });
+            this.localVideo.srcObject = this.localStream;
+            this.videoContainer.classList.remove('hidden');
+            this.messagesDiv.classList.add('hidden'); // Hide text chat when video is active
+            
+            // Initialize video button state
+            const videoTrack = this.localStream.getVideoTracks()[0];
+            if (videoTrack) {
+                this.videoBtn.classList.add('bg-green-500/80');
+                this.videoBtn.innerHTML = '<span class="hidden sm:inline">Video On</span>';
+            }
+            
+            this.displaySystemMessage('Camera and microphone ready');
         } catch (error) {
-            this.showAuthMessage('Microphone access denied. Voice chat will not work.', 'error');
+            console.error('Media access error:', error);
+            this.displaySystemMessage('Camera and microphone access denied. Trying audio only...');
+            
+            // Fallback to audio-only if video fails
+            try {
+                this.localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                this.displaySystemMessage('Audio-only mode enabled');
+                
+                // Update video button to indicate no video
+                this.videoBtn.classList.add('bg-red-500/80');
+                this.videoBtn.innerHTML = '<span class="hidden sm:inline">No Camera</span>';
+                this.videoBtn.disabled = true;
+                this.videoBtn.title = 'Camera not available';
+            } catch (audioError) {
+                console.error('Audio access error:', audioError);
+                this.displaySystemMessage('Microphone access denied. Limited functionality available.');
+                
+                // Disable audio/video controls
+                this.muteBtn.disabled = true;
+                this.videoBtn.disabled = true;
+                this.muteBtn.title = 'Microphone not available';
+                this.videoBtn.title = 'Camera not available';
+            }
         }
         
         this.authSection.classList.add('hidden');
@@ -309,6 +409,11 @@ class WebRTCChat {
         this.currentUserSpan.textContent = this.currentUser;
         this.isLoggedIn = true;
         
+        // Initialize user count to 1 (current user)
+        this.updateUserCount(1);
+        
+        this.hideLoadingOverlay();
+        this.showLoadingOverlay('Connecting to server...');
         this.connectWebSocket();
     }
 
@@ -317,6 +422,10 @@ class WebRTCChat {
         this.ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
         
         this.ws.onopen = () => {
+            console.log('WebSocket connected');
+            this.displaySystemMessage('Connected to server');
+            this.hideLoadingOverlay();
+            
             if (this.isLoggedIn) {
                 this.currentChannel = null; // Force a fresh join
                 this.joinChannel('general');
@@ -328,12 +437,16 @@ class WebRTCChat {
             this.handleMessage(message);
         };
         
-        this.ws.onclose = () => {
+        this.ws.onclose = (event) => {
+            console.log('WebSocket disconnected:', event.code, event.reason);
+            this.displaySystemMessage('Disconnected from server. Reconnecting...');
+            this.showLoadingOverlay('Reconnecting to server...');
             setTimeout(() => this.connectWebSocket(), 3000);
         };
         
         this.ws.onerror = (error) => {
             console.error('WebSocket error:', error);
+            this.displaySystemMessage('Connection error occurred');
         };
     }
 
@@ -346,18 +459,21 @@ class WebRTCChat {
                 this.updateUserList(message.data);
                 break;
             case 'user_joined':
-                this.addUserToList(message.username);
+                this.handleUserJoined(message.username);
                 this.displaySystemMessage(`${message.username} joined the channel`);
                 break;
             case 'user_left':
-                this.removeUserFromList(message.username);
+                this.handleUserLeft(message.username);
                 this.displaySystemMessage(`${message.username} left the channel`);
                 break;
-            case 'audio_chunk':
-                this.handleAudioChunk(message);
+            case 'offer':
+                this.handleOffer(message.from, message.data);
                 break;
-            case 'audio_data':
-                this.handleAudioData(message);
+            case 'answer':
+                this.handleAnswer(message.from, message.data);
+                break;
+            case 'ice-candidate':
+                this.handleIceCandidate(message.from, message.data);
                 break;
         }
     }
@@ -367,12 +483,18 @@ class WebRTCChat {
             return;
         }
         
+        // Leave current channel if exists
         if (this.currentChannel) {
             this.sendWebSocketMessage({
                 type: 'leave_channel',
                 username: this.currentUser,
                 channel: this.currentChannel
             });
+            // Close all existing peer connections
+            for (const pc of this.peerConnections.values()) {
+                pc.close();
+            }
+            this.peerConnections.clear();
         }
         
         this.currentChannel = channelId;
@@ -385,13 +507,6 @@ class WebRTCChat {
             username: this.currentUser,
             channel: channelId
         });
-        
-        // Stop any existing audio recording
-        this.stopAudioRecording();
-        this.remoteAudioContainer.innerHTML = '';
-        
-        // Start audio recording for this channel
-        this.startAudioRecording();
     }
 
     sendMessage() {
@@ -488,7 +603,7 @@ class WebRTCChat {
         
         messageDiv.innerHTML = `
             <div class="bg-gray-700/50 backdrop-blur-sm text-gray-300 text-sm px-4 py-2 rounded-full border border-gray-600/30">
-                <span class="mr-2">ℹ️</span>${this.escapeHtml(content)}
+                ${this.escapeHtml(content)}
             </div>
         `;
         
@@ -499,9 +614,36 @@ class WebRTCChat {
     updateUserList(userList) {
         this.usersList.innerHTML = '';
         
+        // Add current user first (visually distinct)
+        if (this.currentUser) {
+            const currentUserDiv = document.createElement('div');
+            currentUserDiv.className = 'flex items-center space-x-2 p-2 bg-blue-600/30 rounded border border-blue-500/50';
+            currentUserDiv.dataset.user = this.currentUser;
+            currentUserDiv.innerHTML = `
+                <div class="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+                <span class="font-semibold text-blue-300">${this.currentUser} (You)</span>
+            `;
+            this.usersList.appendChild(currentUserDiv);
+        }
+        
+        // Add other users
         userList.forEach(username => {
-            this.addUserToList(username);
+            if (username !== this.currentUser) {
+                const userDiv = document.createElement('div');
+                userDiv.className = 'flex items-center space-x-2 p-2 bg-gray-700 rounded';
+                userDiv.dataset.user = username;
+                userDiv.innerHTML = `
+                    <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span>${username}</span>
+                `;
+                this.usersList.appendChild(userDiv);
+                // Initiate connection to existing users
+                this.handleUserJoined(username);
+            }
         });
+        
+        // Update user count to show total users
+        this.updateUserCount(userList.length);
     }
 
     addUserToList(username) {
@@ -515,6 +657,9 @@ class WebRTCChat {
             <span>${username}</span>
         `;
         this.usersList.appendChild(userDiv);
+        
+        // Update user count
+        this.updateUserCountFromList();
     }
 
     removeUserFromList(username) {
@@ -523,221 +668,686 @@ class WebRTCChat {
             userDiv.remove();
         }
         
-        // Clean up audio element
-        const audioElement = document.getElementById(`audio-${username}`);
-        if (audioElement) {
-            audioElement.remove();
-        }
-        
-        // Clean up audio player context
-        if (this.audioPlayers.has(username)) {
-            const playerInfo = this.audioPlayers.get(username);
-            if (playerInfo.context) {
-                playerInfo.context.close();
-            }
-            this.audioPlayers.delete(username);
+        // Update user count
+        this.updateUserCountFromList();
+    }
+
+    updateUserCount(count) {
+        const userCountElement = document.getElementById('user-count');
+        if (userCountElement) {
+            userCountElement.textContent = count;
         }
     }
 
-
-    async startAudioRecording() {
-        if (this.isRecording) {
-            console.log('Audio recording already active');
-            return;
-        }
-
-        try {
-            console.log('Starting WebSocket audio recording...');
-            
-            // Get microphone access with consistent sample rate
-            this.localStream = await navigator.mediaDevices.getUserMedia({ 
-                audio: {
-                    sampleRate: 44100,  // Use standard sample rate
-                    channelCount: 1,
-                    echoCancellation: true,
-                    noiseSuppression: true
-                }
-            });
-
-            console.log('Got microphone access');
-
-            // Create AudioContext for processing
-            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const source = this.audioContext.createMediaStreamSource(this.localStream);
-            
-            // Use smaller buffer size to reduce latency
-            this.scriptProcessor = this.audioContext.createScriptProcessor(1024, 1, 1);
-            
-            this.scriptProcessor.onaudioprocess = (audioProcessingEvent) => {
-                if (!this.isMuted) {
-                    const inputBuffer = audioProcessingEvent.inputBuffer;
-                    const audioData = inputBuffer.getChannelData(0);
-                    this.sendAudioData(audioData);
-                }
-            };
-
-            // Connect the nodes
-            source.connect(this.scriptProcessor);
-            this.scriptProcessor.connect(this.audioContext.destination);
-            this.isRecording = true;
-            
-            console.log(`Audio recording started with sample rate: ${this.audioContext.sampleRate}`);
-        } catch (error) {
-            console.error('Error starting audio recording:', error);
-        }
+    updateUserCountFromList() {
+        const userElements = document.querySelectorAll('[data-user]');
+        this.updateUserCount(userElements.length);
     }
 
-    stopAudioRecording() {
-        if (this.scriptProcessor) {
-            this.scriptProcessor.disconnect();
-            this.scriptProcessor = null;
-        }
-        
-        if (this.audioContext) {
-            this.audioContext.close();
-            this.audioContext = null;
-        }
-        
-        if (this.localStream) {
-            this.localStream.getTracks().forEach(track => track.stop());
-            this.localStream = null;
-        }
-        
-        this.isRecording = false;
-        console.log('Audio recording stopped');
-    }
+    createPeerConnection(username) {
+        const pc = new RTCPeerConnection({
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' } // Public STUN server
+            ]
+        });
 
-    sendAudioData(audioData) {
-        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-            return;
-        }
-
-        try {
-            // Convert Float32Array to base64
-            const samples = new Int16Array(audioData.length);
-            for (let i = 0; i < audioData.length; i++) {
-                samples[i] = Math.max(-1, Math.min(1, audioData[i])) * 0x7FFF;
-            }
-            
-            const uint8Array = new Uint8Array(samples.buffer);
-            let binary = '';
-            for (let i = 0; i < uint8Array.length; i++) {
-                binary += String.fromCharCode(uint8Array[i]);
-            }
-            const base64Audio = btoa(binary);
-            
-            console.log(`Sending audio data: ${base64Audio.length} characters`);
-            
-            this.sendWebSocketMessage({
-                type: 'audio_data',
-                username: this.currentUser,
-                channel: this.currentChannel,
-                audioData: base64Audio,
-                sampleRate: this.audioContext.sampleRate
-            });
-        } catch (error) {
-            console.error('Error sending audio data:', error);
-        }
-    }
-
-
-    async handleAudioData(message) {
-        if (message.username === this.currentUser) {
-            return; // Don't play our own audio
-        }
-
-        try {
-            // Validate audio data
-            if (!message.audioData || typeof message.audioData !== 'string') {
-                console.error('Invalid audio data received');
-                return;
-            }
-
-            console.log(`Received audio data from ${message.username}: ${message.audioData.length} characters`);
-
-            // Get or create AudioContext and playback tracking for this user
-            if (!this.audioPlayers.has(message.username)) {
-                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                this.audioPlayers.set(message.username, {
-                    context: audioContext,
-                    nextStartTime: 0,
-                    bufferQueue: []
+        pc.onicecandidate = event => {
+            if (event.candidate) {
+                this.sendWebSocketMessage({
+                    type: 'ice-candidate',
+                    to: username,
+                    from: this.currentUser,
+                    channel: this.currentChannel,
+                    data: event.candidate
                 });
             }
+        };
 
-            const playerInfo = this.audioPlayers.get(message.username);
-            const audioContext = playerInfo.context;
+        // Connection state monitoring
+        pc.onconnectionstatechange = () => {
+            this.handleConnectionStateChange(username, pc.connectionState);
+        };
 
-            // Convert base64 back to audio data
-            let binaryString;
-            try {
-                binaryString = atob(message.audioData);
-            } catch (base64Error) {
-                console.error('Invalid base64 audio data:', base64Error);
-                return;
-            }
+        // ICE connection state monitoring
+        pc.oniceconnectionstatechange = () => {
+            this.handleIceConnectionStateChange(username, pc.iceConnectionState);
+        };
 
-            // Convert to Int16Array
-            const uint8Array = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-                uint8Array[i] = binaryString.charCodeAt(i);
-            }
-            const int16Array = new Int16Array(uint8Array.buffer);
+        // Signaling state monitoring
+        pc.onsignalingstatechange = () => {
+            console.log(`Signaling state for ${username}: ${pc.signalingState}`);
+        };
 
-            // Convert Int16 to Float32 for Web Audio API
-            const sampleRate = message.sampleRate || audioContext.sampleRate;
-            const audioBuffer = audioContext.createBuffer(1, int16Array.length, sampleRate);
-            const channelData = audioBuffer.getChannelData(0);
+        pc.ontrack = event => {
+            const track = event.track;
+            const stream = event.streams[0];
             
-            for (let i = 0; i < int16Array.length; i++) {
-                channelData[i] = int16Array[i] / 0x7FFF;
+            if (track.kind === 'video') {
+                // Handle video track - assign to remote video element
+                this.remoteVideo.srcObject = stream;
+                // Show video container when we receive video
+                if (this.videoContainer.classList.contains('hidden')) {
+                    this.videoContainer.classList.remove('hidden');
+                    this.messagesDiv.classList.add('hidden');
+                }
+                
+                // Monitor track state
+                track.onended = () => {
+                    console.log(`Remote video track ended for ${username}`);
+                    this.handleRemoteTrackEnded(username, 'video');
+                };
+                
+                track.onmute = () => {
+                    console.log(`Remote video track muted for ${username}`);
+                    this.displaySystemMessage(`${username}'s video was disabled`);
+                };
+                
+                track.onunmute = () => {
+                    console.log(`Remote video track unmuted for ${username}`);
+                    this.displaySystemMessage(`${username}'s video was enabled`);
+                };
+            } else if (track.kind === 'audio') {
+                // Handle audio track - create audio element for playback
+                let remoteAudio = document.getElementById(`remote-audio-${username}`);
+                if (!remoteAudio) {
+                    remoteAudio = document.createElement('audio');
+                    remoteAudio.id = `remote-audio-${username}`;
+                    remoteAudio.autoplay = true;
+                    document.body.appendChild(remoteAudio);
+                }
+                remoteAudio.srcObject = stream;
+                
+                // Monitor audio track state
+                track.onended = () => {
+                    console.log(`Remote audio track ended for ${username}`);
+                    this.handleRemoteTrackEnded(username, 'audio');
+                };
+                
+                track.onmute = () => {
+                    console.log(`Remote audio track muted for ${username}`);
+                    this.updateUserMuteStatus(username, true);
+                };
+                
+                track.onunmute = () => {
+                    console.log(`Remote audio track unmuted for ${username}`);
+                    this.updateUserMuteStatus(username, false);
+                };
             }
+        };
 
-            // Schedule playback to prevent overlapping and crackling
-            const currentTime = audioContext.currentTime;
-            const startTime = Math.max(currentTime, playerInfo.nextStartTime);
-            const bufferDuration = audioBuffer.duration;
+        if (this.localStream) {
+            this.localStream.getTracks().forEach(track => {
+                pc.addTrack(track, this.localStream);
+            });
+        }
 
-            // Create and schedule audio source
-            const source = audioContext.createBufferSource();
-            source.buffer = audioBuffer;
-            source.connect(audioContext.destination);
-            source.start(startTime);
+        this.peerConnections.set(username, pc);
+        return pc;
+    }
 
-            // Update next start time to prevent overlapping
-            playerInfo.nextStartTime = startTime + bufferDuration;
+    handleUserJoined(username) {
+        if (username === this.currentUser || this.peerConnections.has(username)) {
+            return;
+        }
+        
+        // Add user to the visual list
+        this.addUserToList(username);
+        
+        const pc = this.createPeerConnection(username);
+        pc.createOffer()
+            .then(offer => pc.setLocalDescription(offer))
+            .then(() => {
+                this.sendWebSocketMessage({
+                    type: 'offer',
+                    to: username,
+                    from: this.currentUser,
+                    channel: this.currentChannel,
+                    data: pc.localDescription
+                });
+            })
+            .catch(e => console.error('Error creating offer:', e));
+    }
 
-            console.log(`Scheduled audio from ${message.username} at ${startTime.toFixed(3)}s`);
-        } catch (error) {
-            console.error('Error handling audio data:', error);
+    handleUserLeft(username) {
+        if (this.peerConnections.has(username)) {
+            this.peerConnections.get(username).close();
+            this.peerConnections.delete(username);
+        }
+        
+        // Clean up remote audio element for this user
+        const remoteAudio = document.getElementById(`remote-audio-${username}`);
+        if (remoteAudio) {
+            remoteAudio.remove();
+        }
+        
+        this.removeUserFromList(username);
+        
+        // If no more peer connections, clear remote video and show messages
+        if (this.peerConnections.size === 0) {
+            this.remoteVideo.srcObject = null;
+            if (!this.videoContainer.classList.contains('hidden')) {
+                this.videoContainer.classList.add('hidden');
+                this.messagesDiv.classList.remove('hidden');
+            }
         }
     }
 
-    // Keep the old method for backward compatibility
-    async handleAudioChunk(message) {
-        // Redirect to new handler
-        await this.handleAudioData(message);
+    handleOffer(fromUsername, offer) {
+        // Don't create connection to ourselves or duplicate connections
+        if (fromUsername === this.currentUser) {
+            return;
+        }
+        
+        let pc = this.peerConnections.get(fromUsername);
+        if (!pc) {
+            pc = this.createPeerConnection(fromUsername);
+        }
+        
+        // Check if we're in the correct state to receive an offer
+        if (pc.signalingState === 'stable') {
+            pc.setRemoteDescription(new RTCSessionDescription(offer))
+                .then(() => {
+                    // Process any queued ICE candidates
+                    if (pc.iceCandidateQueue) {
+                        pc.iceCandidateQueue.forEach(candidate => {
+                            pc.addIceCandidate(new RTCIceCandidate(candidate))
+                              .catch(e => console.error('Error adding queued ICE candidate:', e));
+                        });
+                        delete pc.iceCandidateQueue;
+                    }
+                    return pc.createAnswer();
+                })
+                .then(answer => pc.setLocalDescription(answer))
+                .then(() => {
+                    this.sendWebSocketMessage({
+                        type: 'answer',
+                        to: fromUsername,
+                        from: this.currentUser,
+                        channel: this.currentChannel,
+                        data: pc.localDescription
+                    });
+                })
+                .catch(e => console.error('Error handling offer:', e));
+        } else {
+            console.log(`Ignoring offer from ${fromUsername}, wrong signaling state: ${pc.signalingState}`);
+        }
+    }
+
+    handleAnswer(fromUsername, answer) {
+        const pc = this.peerConnections.get(fromUsername);
+        if (pc) {
+            // Check if we're in the correct state to receive an answer
+            if (pc.signalingState === 'have-local-offer') {
+                pc.setRemoteDescription(new RTCSessionDescription(answer))
+                  .then(() => {
+                      // Process any queued ICE candidates
+                      if (pc.iceCandidateQueue) {
+                          pc.iceCandidateQueue.forEach(candidate => {
+                              pc.addIceCandidate(new RTCIceCandidate(candidate))
+                                .catch(e => console.error('Error adding queued ICE candidate:', e));
+                          });
+                          delete pc.iceCandidateQueue;
+                      }
+                  })
+                  .catch(e => console.error('Error handling answer:', e));
+            } else {
+                console.log(`Ignoring answer from ${fromUsername}, wrong signaling state: ${pc.signalingState}`);
+            }
+        }
+    }
+
+    handleIceCandidate(fromUsername, candidate) {
+        const pc = this.peerConnections.get(fromUsername);
+        if (pc) {
+            // Only add ICE candidates if we have remote description set
+            if (pc.remoteDescription) {
+                pc.addIceCandidate(new RTCIceCandidate(candidate))
+                  .catch(e => console.error('Error adding ICE candidate:', e));
+            } else {
+                console.log(`Queueing ICE candidate from ${fromUsername}, waiting for remote description`);
+                // Queue the candidate for later
+                if (!pc.iceCandidateQueue) {
+                    pc.iceCandidateQueue = [];
+                }
+                pc.iceCandidateQueue.push(candidate);
+            }
+        }
+    }
+
+    // Connection state management methods
+    handleConnectionStateChange(username, connectionState) {
+        console.log(`Connection state for ${username}: ${connectionState}`);
+        
+        switch (connectionState) {
+            case 'connecting':
+                this.displaySystemMessage(`Connecting to ${username}...`);
+                this.showConnectionStatus(username, 'connecting', '🔄');
+                break;
+            case 'connected':
+                this.displaySystemMessage(`Connected to ${username}`);
+                this.showConnectionStatus(username, 'connected', '✅');
+                this.hideLoadingOverlay();
+                break;
+            case 'disconnected':
+                this.displaySystemMessage(`Disconnected from ${username}`);
+                this.showConnectionStatus(username, 'disconnected', 'X');
+                break;
+            case 'failed':
+                this.displaySystemMessage(`Connection failed with ${username}`);
+                this.showConnectionStatus(username, 'failed', 'X');
+                this.handleConnectionFailure(username);
+                break;
+            case 'closed':
+                this.displaySystemMessage(`Connection closed with ${username}`);
+                this.removeConnectionStatus(username);
+                break;
+        }
+    }
+
+    handleIceConnectionStateChange(username, iceConnectionState) {
+        console.log(`ICE connection state for ${username}: ${iceConnectionState}`);
+        
+        switch (iceConnectionState) {
+            case 'checking':
+                this.showLoadingOverlay(`Establishing connection with ${username}...`);
+                break;
+            case 'connected':
+            case 'completed':
+                this.hideLoadingOverlay();
+                break;
+            case 'failed':
+                this.hideLoadingOverlay();
+                this.displaySystemMessage(`Unable to establish direct connection with ${username}`);
+                break;
+            case 'disconnected':
+                this.displaySystemMessage(`Connection with ${username} interrupted`);
+                break;
+            case 'closed':
+                this.hideLoadingOverlay();
+                break;
+        }
+    }
+
+    handleConnectionFailure(username) {
+        // Attempt to reconnect after a delay
+        setTimeout(() => {
+            if (this.peerConnections.has(username)) {
+                console.log(`Attempting to reconnect to ${username}`);
+                this.displaySystemMessage(`Attempting to reconnect to ${username}...`);
+                
+                // Close existing connection
+                const oldPc = this.peerConnections.get(username);
+                if (oldPc) {
+                    oldPc.close();
+                }
+                
+                // Create new connection
+                this.handleUserJoined(username);
+            }
+        }, 3000);
+    }
+
+    handleRemoteTrackEnded(username, trackKind) {
+        if (trackKind === 'video') {
+            this.displaySystemMessage(`${username} stopped sharing video`);
+        } else if (trackKind === 'audio') {
+            this.displaySystemMessage(`${username} disconnected audio`);
+        }
+    }
+
+    showConnectionStatus(username, status, emoji) {
+        const userElement = document.querySelector(`[data-user="${username}"]`);
+        if (userElement) {
+            const statusElement = userElement.querySelector('.connection-status') || 
+                                 (() => {
+                                     const el = document.createElement('span');
+                                     el.className = 'connection-status ml-2 text-xs';
+                                     userElement.appendChild(el);
+                                     return el;
+                                 })();
+            
+            statusElement.textContent = emoji;
+            statusElement.title = `Connection: ${status}`;
+            
+            // Add visual feedback based on status
+            userElement.className = userElement.className.replace(/connection-\w+/g, '');
+            userElement.classList.add(`connection-${status}`);
+        }
+    }
+
+    removeConnectionStatus(username) {
+        const userElement = document.querySelector(`[data-user="${username}"]`);
+        if (userElement) {
+            const statusElement = userElement.querySelector('.connection-status');
+            if (statusElement) {
+                statusElement.remove();
+            }
+            userElement.className = userElement.className.replace(/connection-\w+/g, '');
+        }
+    }
+
+    updateUserMuteStatus(username, isMuted) {
+        const userElement = document.querySelector(`[data-user="${username}"]`);
+        if (userElement) {
+            const muteIndicator = userElement.querySelector('.mute-indicator') || 
+                                 (() => {
+                                     const el = document.createElement('span');
+                                     el.className = 'mute-indicator ml-1 text-xs';
+                                     userElement.appendChild(el);
+                                     return el;
+                                 })();
+            
+            if (isMuted) {
+                muteIndicator.textContent = 'Muted';
+                muteIndicator.title = 'Microphone muted';
+                this.displaySystemMessage(`${username} muted their microphone`);
+            } else {
+                muteIndicator.textContent = 'Active';
+                muteIndicator.title = 'Microphone active';
+                this.displaySystemMessage(`${username} unmuted their microphone`);
+            }
+        }
+    }
+
+    showLoadingOverlay(message = 'Connecting...') {
+        const overlay = document.getElementById('loading-overlay');
+        if (overlay) {
+            const messageElement = overlay.querySelector('.text-lg');
+            if (messageElement) {
+                messageElement.textContent = message;
+            }
+            overlay.classList.remove('hidden');
+        }
+    }
+
+    hideLoadingOverlay() {
+        const overlay = document.getElementById('loading-overlay');
+        if (overlay) {
+            overlay.classList.add('hidden');
+        }
+    }
+
+    // Helper method to revert from screen sharing to camera
+    async revertToCamera() {
+        if (!this.localStream) {
+            throw new Error('No local stream available');
+        }
+
+        const currentVideoTrack = this.localStream.getVideoTracks()[0];
+        if (!currentVideoTrack) {
+            throw new Error('No video track available');
+        }
+
+        try {
+            // Get new camera stream
+            const cameraStream = await navigator.mediaDevices.getUserMedia({ 
+                video: { 
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 },
+                    frameRate: { ideal: 30 }
+                }, 
+                audio: false 
+            });
+            const cameraTrack = cameraStream.getVideoTracks()[0];
+            
+            // Replace track on all peer connections
+            for (const pc of this.peerConnections.values()) {
+                const sender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
+                if (sender) {
+                    await sender.replaceTrack(cameraTrack);
+                }
+            }
+            
+            // Stop the old track and replace it in the stream
+            currentVideoTrack.stop();
+            this.localStream.removeTrack(currentVideoTrack);
+            this.localStream.addTrack(cameraTrack);
+            this.localVideo.srcObject = this.localStream;
+            
+            return true;
+        } catch (error) {
+            console.error('Error reverting to camera:', error);
+            throw error;
+        }
+    }
+
+    toggleVideo() {
+        if (!this.localStream) {
+            this.displaySystemMessage('No video stream available');
+            return;
+        }
+        
+        const videoTrack = this.localStream.getVideoTracks()[0];
+        if (videoTrack) {
+            const wasEnabled = videoTrack.enabled;
+            videoTrack.enabled = !videoTrack.enabled;
+            
+            // Update button state and styling
+            if (videoTrack.enabled) {
+                this.videoBtn.classList.add('bg-green-500/80');
+                this.videoBtn.classList.remove('bg-red-500/80');
+                this.videoBtn.innerHTML = '<span class="hidden sm:inline">Video On</span>';
+                this.displaySystemMessage('Camera enabled');
+            } else {
+                this.videoBtn.classList.remove('bg-green-500/80');
+                this.videoBtn.classList.add('bg-red-500/80');
+                this.videoBtn.innerHTML = '<span class="hidden sm:inline">Video Off</span>';
+                this.displaySystemMessage('Camera disabled');
+            }
+            
+            // Log state change
+            console.log(`Video ${videoTrack.enabled ? 'enabled' : 'disabled'}`);
+            
+            // Update local video display
+            if (this.localVideo) {
+                this.localVideo.style.opacity = videoTrack.enabled ? '1' : '0.3';
+            }
+        } else {
+            this.displaySystemMessage('No video track found');
+        }
+    }
+
+    async toggleScreenShare() {
+        if (!this.localStream) {
+            this.displaySystemMessage('No local stream available for screen sharing');
+            return;
+        }
+
+        const videoTrack = this.localStream.getVideoTracks()[0];
+        if (!videoTrack) {
+            this.displaySystemMessage('No video track available for screen sharing');
+            return;
+        }
+
+        if (this.isScreenSharing) {
+            // Stop screen sharing and revert to camera
+            this.displaySystemMessage('Stopping screen share...');
+            try {
+                const cameraStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 },
+                        frameRate: { ideal: 30 }
+                    }, 
+                    audio: false 
+                });
+                const cameraTrack = cameraStream.getVideoTracks()[0];
+                
+                // Replace track on all peer connections
+                for (const pc of this.peerConnections.values()) {
+                    const sender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
+                    if (sender) {
+                        await sender.replaceTrack(cameraTrack);
+                    }
+                }
+                
+                // Stop the old track and replace it in the stream
+                videoTrack.stop();
+                this.localStream.removeTrack(videoTrack);
+                this.localStream.addTrack(cameraTrack);
+                this.localVideo.srcObject = this.localStream;
+                
+                this.isScreenSharing = false;
+                this.screenShareBtn.classList.remove('bg-green-500/80');
+                this.screenShareBtn.innerHTML = '<span class="hidden sm:inline">Share</span>';
+                this.displaySystemMessage('Switched back to camera');
+                
+                // Notify other users
+                this.sendMessage('Stopped screen sharing', 'system');
+            } catch (error) {
+                console.error('Error reverting to camera:', error);
+                this.displaySystemMessage('Failed to switch back to camera: ' + error.message);
+            }
+        } else {
+            // Start screen sharing
+            this.displaySystemMessage('Starting screen share...');
+            try {
+                // Request display media with enhanced options
+                const screenStream = await navigator.mediaDevices.getDisplayMedia({ 
+                    video: {
+                        width: { ideal: 1920, max: 1920 },
+                        height: { ideal: 1080, max: 1080 },
+                        frameRate: { ideal: 30, max: 60 }
+                    },
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        sampleRate: 44100
+                    }
+                });
+                
+                const screenTrack = screenStream.getVideoTracks()[0];
+                const screenAudioTrack = screenStream.getAudioTracks()[0];
+
+                // Replace video track on all peer connections
+                for (const pc of this.peerConnections.values()) {
+                    const videoSender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
+                    if (videoSender) {
+                        await videoSender.replaceTrack(screenTrack);
+                    }
+                    
+                    // Add screen audio if available
+                    if (screenAudioTrack) {
+                        pc.addTrack(screenAudioTrack, screenStream);
+                    }
+                }
+
+                // Stop the old track and replace it in the stream
+                videoTrack.stop();
+                this.localStream.removeTrack(videoTrack);
+                this.localStream.addTrack(screenTrack);
+                
+                // Add screen audio to local stream if available
+                if (screenAudioTrack) {
+                    this.localStream.addTrack(screenAudioTrack);
+                }
+                
+                this.localVideo.srcObject = this.localStream;
+                
+                this.isScreenSharing = true;
+                this.screenShareBtn.classList.add('bg-green-500/80');
+                this.screenShareBtn.innerHTML = '<span class="text-sm">🛑</span><span class="hidden sm:inline">Stop</span>';
+                this.displaySystemMessage('Screen sharing started successfully');
+                
+                // Notify other users
+                this.sendMessage('Started screen sharing', 'system');
+
+                // Enhanced onended handler
+                screenTrack.onended = () => {
+                    console.log('Screen sharing ended by user via browser controls');
+                    this.displaySystemMessage('Screen sharing ended by user');
+                    
+                    // Only auto-revert if still in screen sharing mode
+                    if (this.isScreenSharing) {
+                        // Update UI immediately
+                        this.isScreenSharing = false;
+                        this.screenShareBtn.classList.remove('bg-green-500/80');
+                        this.screenShareBtn.innerHTML = '<span class="hidden sm:inline">Share</span>';
+                        
+                        // Attempt to revert to camera
+                        this.revertToCamera()
+                            .then(() => {
+                                this.displaySystemMessage('Switched back to camera');
+                                this.sendMessage('Stopped screen sharing', 'system');
+                            })
+                            .catch(error => {
+                                console.error('Error reverting to camera after screen share ended:', error);
+                                this.displaySystemMessage('Screen sharing ended, but camera may not be available');
+                            });
+                    }
+                };
+
+                // Additional event listeners for better error handling
+                screenTrack.onmute = () => {
+                    console.log('Screen track muted');
+                    this.displaySystemMessage('Screen sharing paused');
+                };
+
+                screenTrack.onunmute = () => {
+                    console.log('Screen track unmuted');
+                    this.displaySystemMessage('Screen sharing resumed');
+                };
+
+                // Monitor screen share status
+                const checkScreenShare = setInterval(() => {
+                    if (screenTrack.readyState === 'ended') {
+                        clearInterval(checkScreenShare);
+                        if (this.isScreenSharing) {
+                            this.displaySystemMessage('Screen share ended unexpectedly');
+                            this.toggleScreenShare();
+                        }
+                    }
+                }, 1000);
+
+            } catch (error) {
+                console.error('Error starting screen share:', error);
+                let errorMessage = 'Failed to start screen sharing';
+                
+                if (error.name === 'NotAllowedError') {
+                    errorMessage = 'Screen sharing permission denied by user';
+                } else if (error.name === 'NotSupportedError') {
+                    errorMessage = 'Screen sharing not supported by this browser';
+                } else if (error.name === 'NotFoundError') {
+                    errorMessage = 'No screen available for sharing';
+                } else if (error.name === 'AbortError') {
+                    errorMessage = 'Screen sharing cancelled by user';
+                }
+                
+                this.displaySystemMessage(errorMessage);
+            }
+        }
     }
 
     toggleMute() {
-        if (this.localStream) {
-            const audioTrack = this.localStream.getAudioTracks()[0];
-            if (audioTrack) {
-                audioTrack.enabled = !audioTrack.enabled;
-                this.isMuted = !audioTrack.enabled;
-                
-                // Play sound effect
-                if (this.isMuted) {
-                    this.playSound('mute');
-                    this.muteBtn.innerHTML = '<span class="text-sm">🔇</span><span class="hidden sm:inline">Unmute</span>';
-                } else {
-                    this.playSound('unmute');
-                    this.muteBtn.innerHTML = '<span class="text-sm">🎤</span><span class="hidden sm:inline">Mute</span>';
-                }
-                
-                // Keep the same CSS classes - no need to change them
-                // The design stays consistent with the original styling
+        if (!this.localStream) {
+            this.displaySystemMessage('No audio stream available');
+            return;
+        }
+        
+        const audioTrack = this.localStream.getAudioTracks()[0];
+        if (audioTrack) {
+            const wasEnabled = audioTrack.enabled;
+            audioTrack.enabled = !audioTrack.enabled;
+            this.isMuted = !audioTrack.enabled;
+            
+            // Play sound effect and update UI
+            if (this.isMuted) {
+                this.playSound('mute');
+                this.muteBtn.innerHTML = '<span class="hidden sm:inline">Unmute</span>';
+                this.muteBtn.classList.add('bg-red-500/80');
+                this.muteBtn.classList.remove('bg-green-500/80');
+                this.displaySystemMessage('Microphone muted');
+            } else {
+                this.playSound('unmute');
+                this.muteBtn.innerHTML = '<span class="hidden sm:inline">Mute</span>';
+                this.muteBtn.classList.add('bg-green-500/80');
+                this.muteBtn.classList.remove('bg-red-500/80');
+                this.displaySystemMessage('Microphone unmuted');
             }
+            
+            console.log(`Audio ${audioTrack.enabled ? 'enabled' : 'disabled'}`);
+        } else {
+            this.displaySystemMessage('No audio track found');
         }
     }
 
@@ -766,7 +1376,23 @@ class WebRTCChat {
             this.ws.close();
         }
         
-        this.stopAudioRecording();
+        if (this.localStream) {
+            this.localStream.getTracks().forEach(track => track.stop());
+        }
+
+        for (const pc of this.peerConnections.values()) {
+            pc.close();
+        }
+        this.peerConnections.clear();
+        
+        // Clean up all remote audio elements
+        const remoteAudioElements = document.querySelectorAll('[id^="remote-audio-"]');
+        remoteAudioElements.forEach(audio => audio.remove());
+        
+        // Clear remote video and hide video container
+        this.remoteVideo.srcObject = null;
+        this.videoContainer.classList.add('hidden');
+        this.messagesDiv.classList.remove('hidden');
         
         this.authSection.classList.remove('hidden');
         this.chatSection.classList.add('hidden');
@@ -852,6 +1478,111 @@ class WebRTCChat {
         } catch (error) {
             console.error('Error parsing token:', error);
             return true;
+        }
+    }
+
+    // Screen sharing utility methods
+    isScreenSharingSupported() {
+        return navigator.mediaDevices && 
+               typeof navigator.mediaDevices.getDisplayMedia === 'function';
+    }
+
+    async getScreenSharingCapabilities() {
+        if (!this.isScreenSharingSupported()) {
+            return null;
+        }
+
+        try {
+            // Get supported constraints for display media
+            const supportedConstraints = navigator.mediaDevices.getSupportedConstraints();
+            const displayCapabilities = {
+                video: {
+                    supported: true,
+                    constraints: {}
+                },
+                audio: {
+                    supported: false,
+                    constraints: {}
+                }
+            };
+
+            // Check video constraints
+            if (supportedConstraints.width) displayCapabilities.video.constraints.width = true;
+            if (supportedConstraints.height) displayCapabilities.video.constraints.height = true;
+            if (supportedConstraints.frameRate) displayCapabilities.video.constraints.frameRate = true;
+
+            // Check audio constraints (some browsers support system audio capture)
+            if (supportedConstraints.echoCancellation) {
+                displayCapabilities.audio.supported = true;
+                displayCapabilities.audio.constraints.echoCancellation = true;
+            }
+            if (supportedConstraints.noiseSuppression) {
+                displayCapabilities.audio.supported = true;
+                displayCapabilities.audio.constraints.noiseSuppression = true;
+            }
+
+            return displayCapabilities;
+        } catch (error) {
+            console.error('Error getting screen sharing capabilities:', error);
+            return null;
+        }
+    }
+
+    async checkScreenSharingPermission() {
+        if (!this.isScreenSharingSupported()) {
+            return 'not-supported';
+        }
+
+        try {
+            // Try to request display media briefly to check permissions
+            const stream = await navigator.mediaDevices.getDisplayMedia({ 
+                video: { width: 1, height: 1 } 
+            });
+            
+            // Immediately stop the test stream
+            stream.getTracks().forEach(track => track.stop());
+            
+            return 'granted';
+        } catch (error) {
+            if (error.name === 'NotAllowedError') {
+                return 'denied';
+            } else if (error.name === 'AbortError') {
+                return 'cancelled';
+            } else {
+                return 'unknown';
+            }
+        }
+    }
+
+    // Enhanced method to handle screen share with better UX
+    async startScreenShareWithFeedback() {
+        // Check support first
+        if (!this.isScreenSharingSupported()) {
+            this.displaySystemMessage('Screen sharing is not supported in this browser');
+            return false;
+        }
+
+        // Show loading state
+        const originalContent = this.screenShareBtn.innerHTML;
+        this.screenShareBtn.innerHTML = '<span class="text-sm animate-spin">Loading...</span><span class="hidden sm:inline">Loading...</span>';
+        this.screenShareBtn.disabled = true;
+
+        try {
+            // Get capabilities
+            const capabilities = await this.getScreenSharingCapabilities();
+            console.log('Screen sharing capabilities:', capabilities);
+
+            // Start screen sharing
+            await this.toggleScreenShare();
+            return true;
+        } catch (error) {
+            console.error('Screen sharing failed:', error);
+            this.displaySystemMessage('Failed to start screen sharing: ' + error.message);
+            return false;
+        } finally {
+            // Restore button state
+            this.screenShareBtn.innerHTML = originalContent;
+            this.screenShareBtn.disabled = false;
         }
     }
 }

@@ -553,6 +553,48 @@
                 display: block;
             }
         }
+
+        /* Connection status indicators */
+        .connection-connecting {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(59, 130, 246, 0.1));
+            border-left: 3px solid rgba(59, 130, 246, 0.5);
+            animation: pulse 2s infinite;
+        }
+
+        .connection-connected {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(34, 197, 94, 0.1));
+            border-left: 3px solid rgba(34, 197, 94, 0.5);
+        }
+
+        .connection-disconnected,
+        .connection-failed {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0.1));
+            border-left: 3px solid rgba(239, 68, 68, 0.5);
+        }
+
+        .connection-status {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .mute-indicator {
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
+        }
+
+        .mute-indicator:hover {
+            opacity: 1;
+        }
+
+        /* Enhanced loading overlay */
+        #loading-overlay {
+            backdrop-filter: blur(10px);
+            background: rgba(0, 0, 0, 0.8);
+        }
+
+        #loading-overlay .glass-effect {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
         /* Modern animated background */
         .animated-background {
             position: fixed;
@@ -1518,7 +1560,10 @@
                     </div>
                     
                     <!-- User Panel at Bottom (Discord Style) -->
-                    <div class="mt-auto bg-gray-900/50 rounded-lg p-3 border border-white/10 backdrop-blur-sm">
+                    <div class="mt-auto bg-gradient-to-br from-black/80 to-gray-900/90 rounded-lg p-3 border border-white/20 backdrop-blur-sm shadow-2xl relative overflow-hidden">
+                        <!-- Decorative gradient line at top -->
+                        <div class="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-white via-gray-300 to-white"></div>
+                        
                         <div class="flex items-center justify-between mb-3">
                             <div class="flex items-center space-x-3 flex-1 min-w-0">
                                 <div class="relative">
@@ -1537,13 +1582,24 @@
                         </div>
                         
                         <!-- Control Buttons -->
-                        <div class="flex items-center space-x-2">
-                            <button id="mute-btn" class="flex-1 px-3 py-2 bg-gradient-to-r from-gray-700/80 to-gray-600/80 text-white rounded-lg hover:from-gray-600/80 hover:to-gray-500/80 transition-all duration-200 font-medium text-sm border border-white/10 flex items-center justify-center space-x-2">
-                                <span class="text-sm">🎤</span>
-                                <span class="hidden sm:inline">Mute</span>
+                        <div class="space-y-2">
+                            <!-- Top row: Video and Share buttons -->
+                            <div class="flex items-center gap-2">
+                                <button id="video-btn" class="flex-1 px-3 py-2 bg-gradient-to-r from-white/10 to-gray-200/10 text-white rounded-lg hover:from-white/20 hover:to-gray-200/20 transition-all duration-200 font-medium text-sm border border-white/20 flex items-center justify-center min-w-0 backdrop-blur-sm shadow-lg relative overflow-hidden">
+                                    <span class="hidden sm:inline relative z-10">Video</span>
+                                </button>
+                                <button id="screen-share-btn" class="flex-1 px-3 py-2 bg-gradient-to-r from-white/10 to-gray-200/10 text-white rounded-lg hover:from-white/20 hover:to-gray-200/20 transition-all duration-200 font-medium text-sm border border-white/20 flex items-center justify-center min-w-0 backdrop-blur-sm shadow-lg relative overflow-hidden">
+                                    <span class="hidden sm:inline relative z-10">Share</span>
+                                </button>
+                            </div>
+                            <!-- Middle row: Wide mute button -->
+                            <button id="mute-btn" class="w-full px-4 py-2 bg-gradient-to-r from-white/10 to-gray-200/10 text-white rounded-lg hover:from-white/20 hover:to-gray-200/20 transition-all duration-200 border border-white/20 flex items-center justify-center font-medium text-sm backdrop-blur-sm shadow-lg relative overflow-hidden">
+                                <span class="hidden sm:inline relative z-10">Mute</span>
                             </button>
-                            <button id="disconnect-btn" class="p-2 bg-gradient-to-r from-red-600/80 to-red-500/80 text-white rounded-lg hover:from-red-500/80 hover:to-red-400/80 transition-all duration-200 border border-white/10">
-                                <span class="text-sm">📞</span>
+                            <!-- Bottom row: Wide disconnect button -->
+                            <button id="disconnect-btn" class="w-full px-4 py-3 bg-gradient-to-r from-red-600/80 to-red-500/80 text-white rounded-lg hover:from-red-500/80 hover:to-red-400/80 transition-all duration-200 border border-red-400/30 flex items-center justify-center space-x-2 font-medium text-sm shadow-lg relative overflow-hidden">
+                                <span class="text-lg relative z-10">📞</span>
+                                <span class="hidden sm:inline relative z-10">Disconnect</span>
                             </button>
                         </div>
                     </div>
@@ -1575,6 +1631,12 @@
                         </div>
                     </div>
                     
+                    <!-- Video Feeds -->
+                    <div id="video-container" class="relative flex-1 bg-black/30 overflow-hidden hidden">
+                        <video id="remote-video" autoplay playsinline class="w-full h-full object-cover"></video>
+                        <video id="local-video" autoplay playsinline muted class="absolute bottom-4 right-4 w-1/4 max-w-xs rounded-lg shadow-lg border-2 border-white/20"></video>
+                    </div>
+
                     <!-- Messages -->
                     <div id="messages" class="flex-1 overflow-y-auto p-3 sm:p-6 space-y-3 sm:space-y-4 custom-scroll bg-gradient-to-b from-black/20 to-gray-900/40"></div>
                     
@@ -1600,8 +1662,8 @@
         </div>
     </div>
 
-    <!-- Audio elements for remote streams -->
-    <div id="remote-audio-container"></div>
+    <!-- Video and Audio elements for remote streams -->
+    <div id="remote-media-container"></div>
 
     <!-- Loading overlay -->
     <div id="loading-overlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 hidden">
@@ -1612,7 +1674,7 @@
         </div>
     </div>
 
-    <script src="app.js?v=4"></script>
+    <script src="app.js?v=5"></script>
     
     <!-- 3D Interactive Background Script -->
     <script>
@@ -1788,6 +1850,7 @@
             
             // Form interaction effects
             const authContainer = document.querySelector('.auth-container');
+           
             if (authContainer) {
                 authContainer.addEventListener('mouseenter', function() {
                     // Intensify animations when hovering over form

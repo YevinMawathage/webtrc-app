@@ -49,6 +49,8 @@ type Message struct {
 	Data       interface{} `json:"data,omitempty"`
 	AudioData  string      `json:"audioData,omitempty"`
 	SampleRate int         `json:"sampleRate,omitempty"`
+	To         string      `json:"to,omitempty"`   // For WebRTC signaling
+	From       string      `json:"from,omitempty"` // For WebRTC signaling
 }
 
 type Channel struct {
@@ -399,6 +401,9 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		case "audio_data":
 			// Broadcast audio data to all users in the channel except sender
 			broadcastAudioChunk(msg)
+		case "offer", "answer", "ice-candidate":
+			// Handle WebRTC signaling messages - forward to specific user
+			handleWebRTCSignaling(msg)
 		}
 	}
 }
@@ -536,6 +541,32 @@ func broadcastAudioChunk(msg Message) {
 			}
 		}
 	}
+}
+
+func handleWebRTCSignaling(msg Message) {
+	// Handle WebRTC signaling messages (offer, answer, ice-candidate)
+	// These need to be sent to a specific user, not broadcast to all
+
+	if msg.To == "" {
+		log.Printf("WebRTC signaling message missing 'to' field: %+v", msg)
+		return
+	}
+
+	// Find the target user in the current channel
+	if channelUsers, channelExists := channels[msg.Channel]; channelExists {
+		for conn, user := range channelUsers {
+			if user.Username == msg.To {
+				err := safeWriteJSON(user, msg)
+				if err != nil {
+					log.Printf("Error sending WebRTC signaling to %s: %v", msg.To, err)
+					conn.Close()
+					delete(channelUsers, conn)
+				}
+				return
+			}
+		}
+	}
+	log.Printf("Could not find target user '%s' for WebRTC signaling message", msg.To)
 }
 
 func broadcastToChannel(channelID string, msg Message) {
