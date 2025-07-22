@@ -367,17 +367,21 @@ class WebRTCChat {
                 video: true 
             });
             this.localVideo.srcObject = this.localStream;
-            this.videoContainer.classList.remove('hidden');
-            this.messagesDiv.classList.add('hidden'); // Hide text chat when video is active
             
-            // Initialize video button state
+            // Disable video by default
             const videoTrack = this.localStream.getVideoTracks()[0];
             if (videoTrack) {
-                this.videoBtn.classList.add('bg-green-500/80');
-                this.videoBtn.innerHTML = '<span class="hidden sm:inline">Video On</span>';
+                videoTrack.enabled = false; // Turn off video by default
+                this.videoBtn.classList.add('bg-red-500/80');
+                this.videoBtn.innerHTML = '<span class="hidden sm:inline">Video Off</span>';
+                this.localVideo.style.opacity = '0.3'; // Dim the local video to show it's off
             }
             
-            this.displaySystemMessage('Camera and microphone ready');
+            // Keep video container hidden initially since video is off
+            this.videoContainer.classList.add('hidden');
+            this.messagesDiv.classList.remove('hidden'); // Show text chat instead
+            
+            this.displaySystemMessage('Camera and microphone ready (video off by default)');
         } catch (error) {
             console.error('Media access error:', error);
             this.displaySystemMessage('Camera and microphone access denied. Trying audio only...');
@@ -617,11 +621,11 @@ class WebRTCChat {
         // Add current user first (visually distinct)
         if (this.currentUser) {
             const currentUserDiv = document.createElement('div');
-            currentUserDiv.className = 'flex items-center space-x-2 p-2 bg-blue-600/30 rounded border border-blue-500/50';
+            currentUserDiv.className = 'flex items-center space-x-2 p-2 bg-gradient-to-r from-white/10 to-gray-200/10 rounded border border-white/20 backdrop-blur-sm';
             currentUserDiv.dataset.user = this.currentUser;
             currentUserDiv.innerHTML = `
-                <div class="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
-                <span class="font-semibold text-blue-300">${this.currentUser} (You)</span>
+                <div class="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                <span class="font-semibold text-white">${this.currentUser} (You)</span>
             `;
             this.usersList.appendChild(currentUserDiv);
         }
@@ -1128,11 +1132,24 @@ class WebRTCChat {
                 this.videoBtn.classList.remove('bg-red-500/80');
                 this.videoBtn.innerHTML = '<span class="hidden sm:inline">Video On</span>';
                 this.displaySystemMessage('Camera enabled');
+                
+                // Show video container when video is enabled
+                if (this.videoContainer.classList.contains('hidden')) {
+                    this.videoContainer.classList.remove('hidden');
+                    this.messagesDiv.classList.add('hidden');
+                }
             } else {
                 this.videoBtn.classList.remove('bg-green-500/80');
                 this.videoBtn.classList.add('bg-red-500/80');
                 this.videoBtn.innerHTML = '<span class="hidden sm:inline">Video Off</span>';
                 this.displaySystemMessage('Camera disabled');
+                
+                // Hide video container when video is disabled (unless there's remote video)
+                const hasRemoteVideo = this.remoteVideo.srcObject && this.remoteVideo.srcObject.getVideoTracks().length > 0;
+                if (!hasRemoteVideo && !this.videoContainer.classList.contains('hidden')) {
+                    this.videoContainer.classList.add('hidden');
+                    this.messagesDiv.classList.remove('hidden');
+                }
             }
             
             // Log state change
