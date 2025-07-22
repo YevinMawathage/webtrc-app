@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebRTC Debug Tool</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #fff;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #333;
+            border-radius: 8px;
+            background-color: #2a2a2a;
+        }
+        .log {
+            background-color: #000;
+            color: #0f0;
+            padding: 10px;
+            border-radius: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #666;
+            cursor: not-allowed;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .status.success { background-color: #155724; border: 1px solid #28a745; }
+        .status.error { background-color: #721c24; border: 1px solid #dc3545; }
+        .status.warning { background-color: #856404; border: 1px solid #ffc107; }
+        video {
+            width: 200px;
+            height: 150px;
+            background-color: #000;
+            border: 1px solid #333;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>WebRTC Connection Debug Tool</h1>
+    
+    <div class="section">
+        <h2>Media Access Test</h2>
+        <button onclick="testMediaAccess()">Test Camera & Microphone</button>
+        <div id="mediaStatus"></div>
+        <video id="localVideo" autoplay muted></video>
+    </div>
+
+    <div class="section">
+        <h2>STUN/TURN Server Test</h2>
+        <button onclick="testSTUNTURN()">Test Ice Servers</button>
+        <div id="stunTurnStatus"></div>
+        <div id="stunTurnLog" class="log"></div>
+    </div>
+
+    <div class="section">
+        <h2>Peer Connection Test</h2>
+        <button onclick="testPeerConnection()">Test WebRTC Connection</button>
+        <div id="peerStatus"></div>
+        <div id="peerLog" class="log"></div>
+    </div>
+
+    <div class="section">
+        <h2>Network Information</h2>
+        <button onclick="showNetworkInfo()">Show Network Info</button>
+        <div id="networkInfo" class="log"></div>
+    </div>
+
+    <div class="section">
+        <h2>WebSocket Test</h2>
+        <button onclick="testWebSocket()">Test WebSocket Connection</button>
+        <div id="wsStatus"></div>
+        <div id="wsLog" class="log"></div>
+    </div>
+
+    <script>
+        let localStream = null;
+        let peerConnection = null;
+        let ws = null;
+
+        function log(elementId, message) {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            element.textContent += `[${timestamp}] ${message}\n`;
+            element.scrollTop = element.scrollHeight;
+        }
+
+        function setStatus(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+
+        async function testMediaAccess() {
+            try {
+                setStatus('mediaStatus', 'Testing media access...', 'warning');
+                
+                // Test video + audio
+                try {
+                    localStream = await navigator.mediaDevices.getUserMedia({
+                        video: true,
+                        audio: true
+                    });
+                    document.getElementById('localVideo').srcObject = localStream;
+                    setStatus('mediaStatus', 'Camera and microphone access granted!', 'success');
+                } catch (videoError) {
+                    // Fallback to audio only
+                    localStream = await navigator.mediaDevices.getUserMedia({
+                        audio: true
+                    });
+                    setStatus('mediaStatus', 'Audio-only access granted (camera failed)', 'warning');
+                }
+
+                const audioTracks = localStream.getAudioTracks();
+                const videoTracks = localStream.getVideoTracks();
+                
+                console.log('Audio tracks:', audioTracks.length);
+                console.log('Video tracks:', videoTracks.length);
+                
+            } catch (error) {
+                console.error('Media access error:', error);
+                setStatus('mediaStatus', `Media access failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testSTUNTURN() {
+            const iceServers = [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                {
+                    urls: 'turn:openrelay.metered.ca:80',
+                    username: 'openrelayproject',
+                    credential: 'openrelayproject'
+                },
+                {
+                    urls: 'turn:openrelay.metered.ca:443',
+                    username: 'openrelayproject',
+                    credential: 'openrelayproject'
+                }
+            ];
+
+            setStatus('stunTurnStatus', 'Testing ICE servers...', 'warning');
+            log('stunTurnLog', 'Starting ICE server connectivity test...');
+
+            try {
+                const pc = new RTCPeerConnection({ iceServers });
+                
+                pc.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        log('stunTurnLog', `ICE Candidate: ${event.candidate.candidate}`);
+                        if (event.candidate.candidate.includes('relay')) {
+                            log('stunTurnLog', '✓ TURN server working!');
+                        }
+                        if (event.candidate.candidate.includes('host')) {
+                            log('stunTurnLog', '✓ Host candidate found');
+                        }
+                        if (event.candidate.candidate.includes('srflx')) {
+                            log('stunTurnLog', '✓ STUN server working!');
+                        }
+                    } else {
+                        log('stunTurnLog', 'ICE gathering complete');
+                        setStatus('stunTurnStatus', 'ICE server test completed', 'success');
+                    }
+                };
+
+                pc.onicegatheringstatechange = () => {
+                    log('stunTurnLog', `ICE gathering state: ${pc.iceGatheringState}`);
+                };
+
+                // Create a data channel to trigger ICE gathering
+                pc.createDataChannel('test');
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
+                
+            } catch (error) {
+                log('stunTurnLog', `Error: ${error.message}`);
+                setStatus('stunTurnStatus', `ICE test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testPeerConnection() {
+            setStatus('peerStatus', 'Testing peer connection...', 'warning');
+            log('peerLog', 'Creating peer connection...');
+
+            try {
+                const iceServers = [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    {
+                        urls: 'turn:openrelay.metered.ca:80',
+                        username: 'openrelayproject',
+                        credential: 'openrelayproject'
+                    }
+                ];
+
+                peerConnection = new RTCPeerConnection({ 
+                    iceServers,
+                    iceCandidatePoolSize: 10
+                });
+
+                peerConnection.onconnectionstatechange = () => {
+                    log('peerLog', `Connection state: ${peerConnection.connectionState}`);
+                };
+
+                peerConnection.oniceconnectionstatechange = () => {
+                    log('peerLog', `ICE connection state: ${peerConnection.iceConnectionState}`);
+                };
+
+                peerConnection.onicegatheringstatechange = () => {
+                    log('peerLog', `ICE gathering state: ${peerConnection.iceGatheringState}`);
+                };
+
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        log('peerLog', `ICE candidate: ${event.candidate.candidate}`);
+                    }
+                };
+
+                if (localStream) {
+                    localStream.getTracks().forEach(track => {
+                        peerConnection.addTrack(track, localStream);
+                        log('peerLog', `Added ${track.kind} track`);
+                    });
+                }
+
+                const offer = await peerConnection.createOffer();
+                await peerConnection.setLocalDescription(offer);
+                log('peerLog', 'Local description set, ICE gathering started...');
+                
+                setStatus('peerStatus', 'Peer connection test in progress...', 'success');
+
+            } catch (error) {
+                log('peerLog', `Error: ${error.message}`);
+                setStatus('peerStatus', `Peer connection test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function showNetworkInfo() {
+            const networkLog = document.getElementById('networkInfo');
+            networkLog.textContent = '';
+            
+            log('networkInfo', `User Agent: ${navigator.userAgent}`);
+            log('networkInfo', `Platform: ${navigator.platform}`);
+            log('networkInfo', `Language: ${navigator.language}`);
+            log('networkInfo', `Online: ${navigator.onLine}`);
+            
+            if (navigator.connection) {
+                log('networkInfo', `Connection Type: ${navigator.connection.effectiveType}`);
+                log('networkInfo', `Downlink: ${navigator.connection.downlink} Mbps`);
+            }
+            
+            // Check WebRTC support
+            log('networkInfo', `WebRTC Support:`);
+            log('networkInfo', `  RTCPeerConnection: ${typeof RTCPeerConnection !== 'undefined'}`);
+            log('networkInfo', `  getUserMedia: ${typeof navigator.mediaDevices?.getUserMedia !== 'undefined'}`);
+            log('networkInfo', `  getDisplayMedia: ${typeof navigator.mediaDevices?.getDisplayMedia !== 'undefined'}`);
+            
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                log('networkInfo', `\nMedia Devices:`);
+                devices.forEach((device, index) => {
+                    log('networkInfo', `  ${index + 1}. ${device.kind}: ${device.label || 'Unnamed'}`);
+                });
+            } catch (error) {
+                log('networkInfo', `Error enumerating devices: ${error.message}`);
+            }
+        }
+
+        function testWebSocket() {
+            setStatus('wsStatus', 'Testing WebSocket connection...', 'warning');
+            log('wsLog', 'Connecting to WebSocket...');
+
+            try {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
+
+                ws.onopen = () => {
+                    log('wsLog', '✓ WebSocket connected successfully');
+                    setStatus('wsStatus', 'WebSocket connection successful!', 'success');
+                    
+                    // Send a test message
+                    ws.send(JSON.stringify({
+                        type: 'test',
+                        message: 'WebSocket test message'
+                    }));
+                };
+
+                ws.onmessage = (event) => {
+                    log('wsLog', `Received: ${event.data}`);
+                };
+
+                ws.onerror = (error) => {
+                    log('wsLog', `WebSocket error: ${error}`);
+                    setStatus('wsStatus', 'WebSocket connection failed!', 'error');
+                };
+
+                ws.onclose = (event) => {
+                    log('wsLog', `WebSocket closed: ${event.code} - ${event.reason}`);
+                };
+
+            } catch (error) {
+                log('wsLog', `Error: ${error.message}`);
+                setStatus('wsStatus', `WebSocket test failed: ${error.message}`, 'error');
+            }
+        }
+    </script>
+</body>
+</html>

@@ -41,16 +41,17 @@ type User struct {
 }
 
 type Message struct {
-	Type       string      `json:"type"`
-	Username   string      `json:"username"`
-	Content    string      `json:"content"`
-	Channel    string      `json:"channel"`
-	Timestamp  time.Time   `json:"timestamp"`
-	Data       interface{} `json:"data,omitempty"`
-	AudioData  string      `json:"audioData,omitempty"`
-	SampleRate int         `json:"sampleRate,omitempty"`
-	To         string      `json:"to,omitempty"`   // For WebRTC signaling
-	From       string      `json:"from,omitempty"` // For WebRTC signaling
+	Type         string      `json:"type"`
+	Username     string      `json:"username"`
+	Content      string      `json:"content"`
+	Channel      string      `json:"channel"`
+	Timestamp    time.Time   `json:"timestamp"`
+	Data         interface{} `json:"data,omitempty"`
+	AudioData    string      `json:"audioData,omitempty"`
+	SampleRate   int         `json:"sampleRate,omitempty"`
+	To           string      `json:"to,omitempty"`           // For WebRTC signaling
+	From         string      `json:"from,omitempty"`         // For WebRTC signaling
+	VideoEnabled bool        `json:"videoEnabled,omitempty"` // For video status updates
 }
 
 type Channel struct {
@@ -150,6 +151,8 @@ func main() {
 	// Specific routes first
 	r.HandleFunc("/", serveHome)
 	r.HandleFunc("/terms", serveTerms)
+	r.HandleFunc("/connection-test", serveConnectionTest)
+	r.HandleFunc("/webrtc-debug", serveWebRTCDebug)
 	r.HandleFunc("/verify-session", handleVerifySession).Methods("POST")
 	r.HandleFunc("/register", handleRegister).Methods("POST")
 	r.HandleFunc("/login", handleLogin).Methods("POST")
@@ -245,6 +248,40 @@ func serveTerms(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	http.ServeFile(w, r, filePath)
 	log.Println("Successfully served terms page")
+}
+
+func serveConnectionTest(w http.ResponseWriter, r *http.Request) {
+	log.Printf("Serving connection test page for request: %s %s", r.Method, r.URL.Path)
+
+	// Check if file exists
+	filePath := "static/connection-test.html"
+	if _, err := http.Dir(".").Open(filePath); err != nil {
+		log.Printf("Error: connection-test.html file not found at %s: %v", filePath, err)
+		http.Error(w, "Connection test page not found", http.StatusNotFound)
+		return
+	}
+
+	// Set content type explicitly
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	http.ServeFile(w, r, filePath)
+	log.Println("Successfully served connection test page")
+}
+
+func serveWebRTCDebug(w http.ResponseWriter, r *http.Request) {
+	log.Printf("Serving WebRTC debug page for request: %s %s", r.Method, r.URL.Path)
+
+	// Check if file exists
+	filePath := "static/webrtc-debug.html"
+	if _, err := http.Dir(".").Open(filePath); err != nil {
+		log.Printf("Error: webrtc-debug.html file not found at %s: %v", filePath, err)
+		http.Error(w, "WebRTC debug page not found", http.StatusNotFound)
+		return
+	}
+
+	// Set content type explicitly
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	http.ServeFile(w, r, filePath)
+	log.Println("Successfully served WebRTC debug page")
 }
 
 func serveJS(w http.ResponseWriter, r *http.Request) {
@@ -394,6 +431,9 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			leaveChannel(conn, msg.Username, msg.Channel)
 		case "message":
 			saveMessage(msg)
+			broadcast <- msg
+		case "video_status":
+			// Broadcast video status to all users in the channel
 			broadcast <- msg
 		case "audio_chunk":
 			// Broadcast audio chunk to all users in the channel except sender

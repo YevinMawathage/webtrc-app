@@ -7,6 +7,7 @@ class WebRTCChat {
         this.isMuted = false;
         this.isLoggedIn = false;
         this.peerConnections = new Map();
+        this.remoteVideoTracks = new Map(); // Track video tracks per user
         this.isScreenSharing = false;
         
         // Sound effects
@@ -55,6 +56,22 @@ class WebRTCChat {
         this.remoteVideo = document.getElementById('remote-video');
         this.videoBtn = document.getElementById('video-btn');
         this.screenShareBtn = document.getElementById('screen-share-btn');
+
+        // Video popup elements
+        this.videoPopupModal = document.getElementById('video-popup-modal');
+        this.popupMainVideo = document.getElementById('popup-main-video');
+        this.popupLocalVideo = document.getElementById('popup-local-video');
+        this.closeVideoPopup = document.getElementById('close-video-popup');
+        this.minimizeVideo = document.getElementById('minimize-video');
+        this.minimizedVideoIndicator = document.getElementById('minimized-video-indicator');
+        this.videoPopupTitle = document.getElementById('video-popup-title');
+        this.mainVideoUsername = document.getElementById('main-video-username');
+        this.activeParticipantsCount = document.getElementById('active-participants-count');
+        this.videoParticipantsContainer = document.getElementById('video-participants-container');
+
+        // Video chat state
+        this.videoParticipants = new Map(); // Track all video participants
+        this.currentMainVideoUser = null; // Currently featured user
 
         // Mobile UI elements
         this.sidebar = document.getElementById('sidebar');
@@ -217,6 +234,19 @@ class WebRTCChat {
                 this.startScreenShareWithFeedback();
             }
         });
+        
+        // Video popup event listeners
+        if (this.closeVideoPopup) {
+            this.closeVideoPopup.addEventListener('click', () => this.closeVideoPopupModal());
+        }
+        
+        if (this.minimizeVideo) {
+            this.minimizeVideo.addEventListener('click', () => this.minimizeVideoPopup());
+        }
+        
+        if (this.minimizedVideoIndicator) {
+            this.minimizedVideoIndicator.addEventListener('click', () => this.restoreVideoPopup());
+        }
         
         this.channelsList.addEventListener('click', (e) => {
             const channelItem = e.target.closest('.channel-item');
@@ -470,6 +500,9 @@ class WebRTCChat {
                 this.handleUserLeft(message.username);
                 this.displaySystemMessage(`${message.username} left the channel`);
                 break;
+            case 'video_status':
+                this.handleVideoStatusUpdate(message.username, message.videoEnabled);
+                break;
             case 'offer':
                 this.handleOffer(message.from, message.data);
                 break;
@@ -511,6 +544,16 @@ class WebRTCChat {
             username: this.currentUser,
             channel: channelId
         });
+        
+        // Broadcast initial video status after joining
+        setTimeout(() => {
+            if (this.localStream) {
+                const videoTrack = this.localStream.getVideoTracks()[0];
+                if (videoTrack) {
+                    this.broadcastVideoStatus(videoTrack.enabled);
+                }
+            }
+        }, 500); // Small delay to ensure other users have processed the join
     }
 
     sendMessage() {
@@ -623,9 +666,16 @@ class WebRTCChat {
             const currentUserDiv = document.createElement('div');
             currentUserDiv.className = 'flex items-center space-x-2 p-2 bg-gradient-to-r from-white/10 to-gray-200/10 rounded border border-white/20 backdrop-blur-sm';
             currentUserDiv.dataset.user = this.currentUser;
+            
+            // Check current user's video status
+            const hasVideo = this.localStream && this.localStream.getVideoTracks()[0] && this.localStream.getVideoTracks()[0].enabled;
+            const videoIcon = hasVideo ? '📹' : '📷';
+            const videoTitle = hasVideo ? 'Video On' : 'Video Off';
+            
             currentUserDiv.innerHTML = `
                 <div class="w-2 h-2 bg-white rounded-full animate-pulse"></div>
                 <span class="font-semibold text-white">${this.currentUser} (You)</span>
+                <span class="video-status text-xs" title="${videoTitle}">${videoIcon}</span>
             `;
             this.usersList.appendChild(currentUserDiv);
         }
@@ -639,6 +689,7 @@ class WebRTCChat {
                 userDiv.innerHTML = `
                     <div class="w-2 h-2 bg-green-500 rounded-full"></div>
                     <span>${username}</span>
+                    <span class="video-status text-xs" title="Video Off">📷</span>
                 `;
                 this.usersList.appendChild(userDiv);
                 // Initiate connection to existing users
@@ -659,6 +710,7 @@ class WebRTCChat {
         userDiv.innerHTML = `
             <div class="w-2 h-2 bg-green-500 rounded-full"></div>
             <span>${username}</span>
+            <span class="video-status text-xs" title="Video Off">📷</span>
         `;
         this.usersList.appendChild(userDiv);
         
@@ -691,8 +743,34 @@ class WebRTCChat {
     createPeerConnection(username) {
         const pc = new RTCPeerConnection({
             iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' } // Public STUN server
-            ]
+                // STUN servers for NAT traversal
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun2.l.google.com:19302' },
+                { urls: 'stun:stun3.l.google.com:19302' },
+                { urls: 'stun:stun4.l.google.com:19302' },
+                
+                // Free public TURN servers (may have limitations)
+                {
+                    urls: 'turn:openrelay.metered.ca:80',
+                    username: 'openrelayproject',
+                    credential: 'openrelayproject'
+                },
+                {
+                    urls: 'turn:openrelay.metered.ca:443',
+                    username: 'openrelayproject',
+                    credential: 'openrelayproject'
+                },
+                {
+                    urls: 'turns:openrelay.metered.ca:443',
+                    username: 'openrelayproject',
+                    credential: 'openrelayproject'
+                }
+            ],
+            // Additional RTCConfiguration options for better connectivity
+            iceCandidatePoolSize: 10,
+            bundlePolicy: 'max-bundle',
+            rtcpMuxPolicy: 'require'
         });
 
         pc.onicecandidate = event => {
@@ -722,33 +800,58 @@ class WebRTCChat {
             console.log(`Signaling state for ${username}: ${pc.signalingState}`);
         };
 
+        // ICE gathering state monitoring
+        pc.onicegatheringstatechange = () => {
+            console.log(`ICE gathering state for ${username}: ${pc.iceGatheringState}`);
+            if (pc.iceGatheringState === 'gathering') {
+                this.displaySystemMessage(`Gathering network information for ${username}...`);
+            } else if (pc.iceGatheringState === 'complete') {
+                console.log(`ICE gathering complete for ${username}`);
+            }
+        };
+
         pc.ontrack = event => {
             const track = event.track;
             const stream = event.streams[0];
             
             if (track.kind === 'video') {
-                // Handle video track - assign to remote video element
-                this.remoteVideo.srcObject = stream;
-                // Show video container when we receive video
-                if (this.videoContainer.classList.contains('hidden')) {
-                    this.videoContainer.classList.remove('hidden');
-                    this.messagesDiv.classList.add('hidden');
+                // Handle video track - show in popup instead of main container
+                console.log(`Received video track from ${username}`);
+                this.displaySystemMessage(`${username} started sharing video`);
+                
+                // Store the track reference for this user
+                if (!this.remoteVideoTracks) {
+                    this.remoteVideoTracks = new Map();
+                }
+                this.remoteVideoTracks.set(username, track);
+                
+                // Show video in popup modal only if track is enabled
+                if (track.enabled && track.readyState === 'live') {
+                    this.showVideoPopup(stream, username);
                 }
                 
                 // Monitor track state
                 track.onended = () => {
                     console.log(`Remote video track ended for ${username}`);
                     this.handleRemoteTrackEnded(username, 'video');
+                    // Clean up track reference
+                    if (this.remoteVideoTracks) {
+                        this.remoteVideoTracks.delete(username);
+                    }
+                    // Remove participant from video chat
+                    this.removeVideoParticipant(username);
                 };
                 
                 track.onmute = () => {
-                    console.log(`Remote video track muted for ${username}`);
-                    this.displaySystemMessage(`${username}'s video was disabled`);
+                    console.log(`Remote video track muted for ${username} (network/bandwidth issue)`);
+                    // Update participant status but don't remove
+                    this.updateParticipantStatus(username, 'muted');
                 };
                 
                 track.onunmute = () => {
                     console.log(`Remote video track unmuted for ${username}`);
-                    this.displaySystemMessage(`${username}'s video was enabled`);
+                    // Update participant status
+                    this.updateParticipantStatus(username, 'active');
                 };
             } else if (track.kind === 'audio') {
                 // Handle audio track - create audio element for playback
@@ -808,6 +911,14 @@ class WebRTCChat {
                     channel: this.currentChannel,
                     data: pc.localDescription
                 });
+                
+                // Broadcast our current video status to the new user
+                if (this.localStream) {
+                    const videoTrack = this.localStream.getVideoTracks()[0];
+                    if (videoTrack) {
+                        this.broadcastVideoStatus(videoTrack.enabled);
+                    }
+                }
             })
             .catch(e => console.error('Error creating offer:', e));
     }
@@ -818,6 +929,11 @@ class WebRTCChat {
             this.peerConnections.delete(username);
         }
         
+        // Clean up remote video track reference
+        if (this.remoteVideoTracks && this.remoteVideoTracks.has(username)) {
+            this.remoteVideoTracks.delete(username);
+        }
+        
         // Clean up remote audio element for this user
         const remoteAudio = document.getElementById(`remote-audio-${username}`);
         if (remoteAudio) {
@@ -826,9 +942,17 @@ class WebRTCChat {
         
         this.removeUserFromList(username);
         
+        // Remove from video chat if participating
+        this.removeVideoParticipant(username);
+        
         // If no more peer connections, clear remote video and show messages
         if (this.peerConnections.size === 0) {
             this.remoteVideo.srcObject = null;
+            // Only close popup if there are no video participants
+            if (this.videoParticipants.size === 0) {
+                this.videoPopupModal.classList.add('hidden');
+                this.minimizedVideoIndicator.classList.add('hidden');
+            }
             if (!this.videoContainer.classList.contains('hidden')) {
                 this.videoContainer.classList.add('hidden');
                 this.messagesDiv.classList.remove('hidden');
@@ -931,6 +1055,11 @@ class WebRTCChat {
                 this.displaySystemMessage(`Connected to ${username}`);
                 this.showConnectionStatus(username, 'connected', '✅');
                 this.hideLoadingOverlay();
+                
+                // Reset retry attempts on successful connection
+                if (this.retryAttempts) {
+                    this.retryAttempts.delete(username);
+                }
                 break;
             case 'disconnected':
                 this.displaySystemMessage(`Disconnected from ${username}`);
@@ -954,41 +1083,83 @@ class WebRTCChat {
         switch (iceConnectionState) {
             case 'checking':
                 this.showLoadingOverlay(`Establishing connection with ${username}...`);
+                this.displaySystemMessage(`Checking network connectivity with ${username}...`);
                 break;
             case 'connected':
             case 'completed':
                 this.hideLoadingOverlay();
+                this.displaySystemMessage(`Successfully connected to ${username}`);
                 break;
             case 'failed':
                 this.hideLoadingOverlay();
-                this.displaySystemMessage(`Unable to establish direct connection with ${username}`);
+                this.displaySystemMessage(`❌ Unable to establish direct connection with ${username}. This may be due to firewall or NAT restrictions.`);
+                console.error(`ICE connection failed for ${username}. Consider using a TURN server for better connectivity.`);
+                
+                // Attempt to restart ICE
+                const pc = this.peerConnections.get(username);
+                if (pc && pc.connectionState !== 'closed') {
+                    console.log(`Attempting ICE restart for ${username}`);
+                    this.displaySystemMessage(`Attempting to reconnect to ${username} using alternative route...`);
+                    pc.restartIce();
+                }
                 break;
             case 'disconnected':
-                this.displaySystemMessage(`Connection with ${username} interrupted`);
+                this.displaySystemMessage(`⚠️ Connection with ${username} interrupted, attempting to reconnect...`);
+                
+                // Give it some time to reconnect automatically
+                setTimeout(() => {
+                    const pc = this.peerConnections.get(username);
+                    if (pc && pc.iceConnectionState === 'disconnected') {
+                        console.log(`ICE still disconnected for ${username}, attempting restart`);
+                        pc.restartIce();
+                    }
+                }, 5000);
                 break;
             case 'closed':
                 this.hideLoadingOverlay();
+                this.displaySystemMessage(`Connection with ${username} closed`);
                 break;
         }
     }
 
     handleConnectionFailure(username) {
-        // Attempt to reconnect after a delay
-        setTimeout(() => {
-            if (this.peerConnections.has(username)) {
-                console.log(`Attempting to reconnect to ${username}`);
-                this.displaySystemMessage(`Attempting to reconnect to ${username}...`);
-                
-                // Close existing connection
-                const oldPc = this.peerConnections.get(username);
-                if (oldPc) {
-                    oldPc.close();
+        console.log(`Handling connection failure for ${username}`);
+        
+        // Track retry attempts
+        if (!this.retryAttempts) {
+            this.retryAttempts = new Map();
+        }
+        
+        const currentAttempts = this.retryAttempts.get(username) || 0;
+        const maxRetries = 3;
+        
+        if (currentAttempts < maxRetries) {
+            const retryDelay = Math.min(3000 * Math.pow(2, currentAttempts), 15000); // Exponential backoff, max 15s
+            this.retryAttempts.set(username, currentAttempts + 1);
+            
+            console.log(`Attempting to reconnect to ${username} (attempt ${currentAttempts + 1}/${maxRetries}) in ${retryDelay}ms`);
+            this.displaySystemMessage(`🔄 Reconnecting to ${username}... (attempt ${currentAttempts + 1}/${maxRetries})`);
+            
+            setTimeout(() => {
+                if (this.peerConnections.has(username)) {
+                    console.log(`Retry ${currentAttempts + 1}: Reconnecting to ${username}`);
+                    
+                    // Close existing connection
+                    const oldPc = this.peerConnections.get(username);
+                    if (oldPc) {
+                        oldPc.close();
+                        this.peerConnections.delete(username);
+                    }
+                    
+                    // Create new connection with fresh peer connection
+                    this.handleUserJoined(username);
                 }
-                
-                // Create new connection
-                this.handleUserJoined(username);
-            }
-        }, 3000);
+            }, retryDelay);
+        } else {
+            console.log(`Max retry attempts reached for ${username}`);
+            this.displaySystemMessage(`❌ Failed to connect to ${username} after ${maxRetries} attempts. Network restrictions may be preventing the connection.`);
+            this.retryAttempts.delete(username);
+        }
     }
 
     handleRemoteTrackEnded(username, trackKind) {
@@ -1049,6 +1220,83 @@ class WebRTCChat {
                 muteIndicator.textContent = 'Active';
                 muteIndicator.title = 'Microphone active';
                 this.displaySystemMessage(`${username} unmuted their microphone`);
+            }
+        }
+    }
+
+    updateParticipantStatus(username, status) {
+        const participantPreview = document.getElementById(`participant-${username}`);
+        if (participantPreview) {
+            const statusIndicator = participantPreview.querySelector('.w-3');
+            if (statusIndicator) {
+                // Update status indicator color
+                statusIndicator.classList.remove('bg-green-500', 'bg-yellow-500', 'bg-red-500');
+                switch (status) {
+                    case 'active':
+                        statusIndicator.classList.add('bg-green-500');
+                        break;
+                    case 'muted':
+                        statusIndicator.classList.add('bg-yellow-500');
+                        break;
+                    case 'disconnected':
+                        statusIndicator.classList.add('bg-red-500');
+                        break;
+                }
+            }
+        }
+    }
+
+    handleVideoStatusUpdate(username, videoEnabled) {
+        const userElement = document.querySelector(`[data-user="${username}"]`);
+        if (userElement) {
+            const videoStatusElement = userElement.querySelector('.video-status');
+            if (videoStatusElement) {
+                const videoIcon = videoEnabled ? '📹' : '📷';
+                const videoTitle = videoEnabled ? 'Video On' : 'Video Off';
+                
+                videoStatusElement.textContent = videoIcon;
+                videoStatusElement.title = videoTitle;
+                
+                this.displaySystemMessage(`${username} ${videoEnabled ? 'enabled' : 'disabled'} their camera`);
+            }
+        }
+
+        // Handle video popup based on explicit user video status changes
+        if (!videoEnabled) {
+            // User explicitly disabled video - remove from video chat
+            this.removeVideoParticipant(username);
+            console.log(`Removed ${username} from video chat due to disabled video`);
+        } else {
+            // User explicitly enabled video - add to video chat if we have their video track
+            const videoTrack = this.remoteVideoTracks ? this.remoteVideoTracks.get(username) : null;
+            if (videoTrack && videoTrack.readyState === 'live') {
+                // Create a stream with the video track and add participant
+                const stream = new MediaStream([videoTrack]);
+                this.showVideoPopup(stream, username);
+                console.log(`Added ${username} to video chat due to enabled video`);
+            }
+        }
+    }
+
+    broadcastVideoStatus(videoEnabled) {
+        this.sendWebSocketMessage({
+            type: 'video_status',
+            username: this.currentUser,
+            channel: this.currentChannel,
+            videoEnabled: videoEnabled
+        });
+    }
+
+    updateCurrentUserVideoStatus(videoEnabled) {
+        const currentUserElement = document.querySelector(`[data-user="${this.currentUser}"]`);
+        if (currentUserElement) {
+            const videoStatusElement = currentUserElement.querySelector('.video-status');
+            if (videoStatusElement) {
+                const videoIcon = videoEnabled ? '📹' : '📷';
+                const videoTitle = videoEnabled ? 'Video On' : 'Video Off';
+                
+                videoStatusElement.textContent = videoIcon;
+                videoStatusElement.title = videoTitle;
             }
         }
     }
@@ -1152,6 +1400,12 @@ class WebRTCChat {
                 }
             }
             
+            // Update current user's video status in the user list
+            this.updateCurrentUserVideoStatus(videoTrack.enabled);
+            
+            // Broadcast video status to other users
+            this.broadcastVideoStatus(videoTrack.enabled);
+            
             // Log state change
             console.log(`Video ${videoTrack.enabled ? 'enabled' : 'disabled'}`);
             
@@ -1162,6 +1416,290 @@ class WebRTCChat {
         } else {
             this.displaySystemMessage('No video track found');
         }
+    }
+
+    // Video Popup Management Methods
+    showVideoPopup(remoteStream, remoteUsername) {
+        if (!this.videoPopupModal || !remoteStream) return;
+
+        // Verify the stream has active video tracks
+        const videoTracks = remoteStream.getVideoTracks();
+        if (videoTracks.length === 0 || !videoTracks[0] || videoTracks[0].readyState !== 'live') {
+            console.log(`No active video tracks for ${remoteUsername}`);
+            return;
+        }
+
+        console.log(`Adding video participant: ${remoteUsername}`);
+
+        // Add participant to the video chat
+        this.addVideoParticipant(remoteUsername, remoteStream);
+
+        // If popup is hidden, show minimized indicator instead of auto-opening
+        if (this.videoPopupModal.classList.contains('hidden')) {
+            this.minimizedVideoIndicator.classList.remove('hidden');
+            console.log('Video popup is minimized, showing indicator');
+        } else {
+            // Update participant count if popup is visible
+            this.updateParticipantCount();
+        }
+
+        console.log(`Video participant ${remoteUsername} added`);
+    }
+
+    addVideoParticipant(username, stream) {
+        // Store participant data
+        this.videoParticipants.set(username, {
+            stream: stream,
+            videoElement: null
+        });
+
+        // If no main video user is set, make this user the main video
+        if (!this.currentMainVideoUser) {
+            this.setMainVideoUser(username, stream);
+        }
+
+        // Create participant preview
+        this.createParticipantPreview(username, stream);
+
+        // If this is the first participant and popup is hidden, auto-open it
+        if (this.videoParticipants.size === 1 && this.videoPopupModal.classList.contains('hidden')) {
+            this.openVideoPopup();
+        }
+    }
+
+    createParticipantPreview(username, stream) {
+        // Check if preview already exists
+        const existingPreview = document.getElementById(`participant-${username}`);
+        if (existingPreview) {
+            existingPreview.querySelector('video').srcObject = stream;
+            return;
+        }
+
+        // Create preview container
+        const previewContainer = document.createElement('div');
+        previewContainer.className = 'flex-shrink-0 relative cursor-pointer video-participant-preview';
+        previewContainer.id = `participant-${username}`;
+        previewContainer.onclick = () => this.setMainVideoUser(username, stream);
+
+        // Create video element
+        const video = document.createElement('video');
+        video.autoplay = true;
+        video.playsInline = true;
+        video.muted = false;
+        video.srcObject = stream;
+        video.className = 'w-16 h-12 object-cover rounded border border-white/30 shadow-sm bg-black';
+
+        // Create username label
+        const usernameLabel = document.createElement('div');
+        usernameLabel.className = 'absolute bottom-0 left-0 bg-black/70 text-white px-1 py-0.5 rounded-br text-xs leading-none';
+        usernameLabel.textContent = username;
+
+        // Create status indicator (green dot for active video)
+        const statusIndicator = document.createElement('div');
+        statusIndicator.className = 'absolute top-0.5 right-0.5 w-2 h-2 bg-green-500 rounded-full border border-white';
+
+        // Assemble preview
+        previewContainer.appendChild(video);
+        previewContainer.appendChild(usernameLabel);
+        previewContainer.appendChild(statusIndicator);
+
+        // Add to participants container
+        this.videoParticipantsContainer.appendChild(previewContainer);
+
+        // Store video element reference
+        this.videoParticipants.get(username).videoElement = video;
+    }
+
+    setMainVideoUser(username, stream) {
+        this.currentMainVideoUser = username;
+        
+        // Update main video
+        if (this.popupMainVideo && stream) {
+            this.popupMainVideo.srcObject = stream;
+        }
+
+        // Update main video username label
+        if (this.mainVideoUsername) {
+            this.mainVideoUsername.textContent = username;
+        }
+
+        // Update preview highlights
+        this.updatePreviewHighlights();
+
+        console.log(`Main video set to: ${username}`);
+    }
+
+    updatePreviewHighlights() {
+        // Remove highlight from all previews
+        document.querySelectorAll('[id^="participant-"]').forEach(preview => {
+            const video = preview.querySelector('video');
+            if (video) {
+                video.classList.remove('border-blue-500');
+                video.classList.add('border-white/30');
+            }
+        });
+
+        // Highlight current main video user
+        if (this.currentMainVideoUser) {
+            const mainPreview = document.getElementById(`participant-${this.currentMainVideoUser}`);
+            if (mainPreview) {
+                const video = mainPreview.querySelector('video');
+                if (video) {
+                    video.classList.remove('border-white/30');
+                    video.classList.add('border-blue-500');
+                }
+            }
+        }
+    }
+
+    removeVideoParticipant(username) {
+        // Remove from participants map
+        this.videoParticipants.delete(username);
+
+        // Remove preview element
+        const previewElement = document.getElementById(`participant-${username}`);
+        if (previewElement) {
+            previewElement.remove();
+        }
+
+        // If this was the main video user, switch to another participant
+        if (this.currentMainVideoUser === username) {
+            const remainingParticipants = Array.from(this.videoParticipants.keys());
+            if (remainingParticipants.length > 0) {
+                const nextUser = remainingParticipants[0];
+                const nextStream = this.videoParticipants.get(nextUser).stream;
+                this.setMainVideoUser(nextUser, nextStream);
+            } else {
+                // No more participants, close popup completely
+                this.currentMainVideoUser = null;
+                if (this.popupMainVideo) {
+                    this.popupMainVideo.srcObject = null;
+                }
+                this.videoPopupModal.classList.add('hidden');
+                this.minimizedVideoIndicator.classList.add('hidden');
+                console.log('All video participants removed, popup closed');
+                return;
+            }
+        }
+
+        // Update participant count
+        this.updateParticipantCount();
+
+        console.log(`Video participant ${username} removed`);
+    }
+
+    updateParticipantCount() {
+        const count = this.videoParticipants.size;
+        if (this.activeParticipantsCount) {
+            this.activeParticipantsCount.textContent = count;
+        }
+        
+        // Update minimized indicator count
+        const minimizedCount = document.getElementById('minimized-participant-count');
+        if (minimizedCount) {
+            minimizedCount.textContent = count;
+        }
+        
+        // Update minimized indicator visibility based on participant count
+        if (count > 0 && this.videoPopupModal.classList.contains('hidden')) {
+            this.minimizedVideoIndicator.classList.remove('hidden');
+        } else if (count === 0) {
+            this.minimizedVideoIndicator.classList.add('hidden');
+        }
+    }
+
+    openVideoPopup() {
+        if (!this.videoPopupModal) return;
+
+        // Set local video stream
+        if (this.popupLocalVideo && this.localStream) {
+            this.popupLocalVideo.srcObject = this.localStream;
+        }
+
+        // Show the popup
+        this.videoPopupModal.classList.remove('hidden');
+        this.minimizedVideoIndicator.classList.add('hidden');
+
+        // Add fade-in animation
+        setTimeout(() => {
+            this.videoPopupModal.classList.add('animate-fadeIn');
+        }, 10);
+
+        console.log('Video popup opened');
+    }
+
+    closeVideoPopupModal() {
+        if (!this.videoPopupModal) return;
+
+        // Hide the popup
+        this.videoPopupModal.classList.add('hidden');
+        
+        // Show minimized indicator if there are active video participants
+        if (this.videoParticipants.size > 0) {
+            this.minimizedVideoIndicator.classList.remove('hidden');
+        } else {
+            this.minimizedVideoIndicator.classList.add('hidden');
+        }
+
+        console.log('Video popup minimized/closed');
+    }
+
+    restoreVideoPopup() {
+        if (!this.videoPopupModal) return;
+        
+        // Only restore if there are active video participants
+        if (this.videoParticipants.size === 0) {
+            this.minimizedVideoIndicator.classList.add('hidden');
+            return;
+        }
+
+        // Show the popup
+        this.videoPopupModal.classList.remove('hidden');
+        this.minimizedVideoIndicator.classList.add('hidden');
+
+        // Restore local video stream
+        if (this.popupLocalVideo && this.localStream) {
+            this.popupLocalVideo.srcObject = this.localStream;
+        }
+
+        // Restore main video if we have a current main user
+        if (this.currentMainVideoUser && this.videoParticipants.has(this.currentMainVideoUser)) {
+            const participantData = this.videoParticipants.get(this.currentMainVideoUser);
+            if (this.popupMainVideo && participantData.stream) {
+                this.popupMainVideo.srcObject = participantData.stream;
+            }
+        }
+
+        // Update participant count
+        this.updateParticipantCount();
+
+        console.log('Video popup restored');
+    }
+
+    minimizeVideoPopup() {
+        if (!this.videoPopupModal) return;
+
+        // Hide the popup but keep the minimized indicator
+        this.videoPopupModal.classList.add('hidden');
+        this.minimizedVideoIndicator.classList.remove('hidden');
+
+        console.log('Video popup minimized');
+    }
+
+    // Check if there are any active video streams to show popup
+    checkAndShowVideoPopup() {
+        // Find the first peer connection with a video stream
+        for (const [username, pc] of this.peerConnections) {
+            const receivers = pc.getReceivers();
+            const videoReceiver = receivers.find(receiver => receiver.track && receiver.track.kind === 'video');
+            
+            if (videoReceiver && videoReceiver.track && videoReceiver.track.readyState === 'live') {
+                const stream = new MediaStream([videoReceiver.track]);
+                this.showVideoPopup(stream, username);
+                return true;
+            }
+        }
+        return false;
     }
 
     async toggleScreenShare() {
