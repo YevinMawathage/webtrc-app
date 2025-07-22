@@ -1042,11 +1042,11 @@ class WebRTCChat {
         switch (connectionState) {
             case 'connecting':
                 this.displaySystemMessage(`Connecting to ${username}...`);
-                this.showConnectionStatus(username, 'connecting', '🔄');
+                this.showConnectionStatus(username, 'connecting', '');
                 break;
             case 'connected':
                 this.displaySystemMessage(`Connected to ${username}`);
-                this.showConnectionStatus(username, 'connected', '✅');
+                this.showConnectionStatus(username, 'connected', '');
                 this.hideLoadingOverlay();
                 
                 // Reset retry attempts on successful connection
